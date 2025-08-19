@@ -23,7 +23,7 @@ export async function GET() {
 
     // Filter hanya yang published untuk public
     const publishedBerita = beritaData
-      .filter((berita) => berita.status_publish === "published")
+      .filter((berita) => berita.status_publish === "Published")
       .sort(
         (a, b) =>
           new Date(b.published_at).getTime() -
