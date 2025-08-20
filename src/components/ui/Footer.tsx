@@ -62,7 +62,7 @@ export default function Footer() {
     "flex items-center gap-3 hover:text-emerald-400 mb-2 text-base";
 
   return (
-    <footer className="bg-gradient-to-t from-emerald-50 to-white text-gray-700 pt-8 pb-4 px-4">
+    <footer className="bg-gradient-to-t from-emerald-400 to-white text-gray-700 pt-8 pb-4 px-4">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 md:gap-10">
         {/* 1. Alamat */}
         <div className="mb-6 md:mb-0">
@@ -172,7 +172,7 @@ export default function Footer() {
 
       {/* Copyright */}
       <div className="mt-10 border-t border-white/20 pt-4 text-center text-base">
-        © {currentYear} Powered by Desa Ciwaruga. All rights reserved.
+        © {currentYear} Powered by RamonArcturus. All rights reserved.
       </div>
     </footer>
   );
