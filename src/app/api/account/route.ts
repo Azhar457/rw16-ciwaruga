@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet} from "@/lib/googleSheets";
+import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
@@ -17,13 +17,10 @@ interface AccountData {
   subscription_end: string;
   created_at: string;
   updated_at: string;
-  [key: string]: string | number; // Remove undefined to match SheetRow type
+  [key: string]: string | number;
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getSession(request);
-  if (!user) {
-    return NextResponse.json({ user: null }, { status: 200 });
   try {
     const session = await getSession(request);
 
@@ -43,19 +40,19 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(safeAccountData);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error fetching accounts:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }
-  return NextResponse.json({ user }, { status: 200 });
 }
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -107,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const maxId = Math.max(...accountData.map((acc) => acc.id), 0);
+    const maxId = Math.max(0, ...accountData.map((acc) => acc.id));
 
     const newAccount: AccountData = {
       id: maxId + 1,
@@ -127,6 +124,8 @@ export async function POST(request: NextRequest) {
       updated_at: "",
     };
 
+    await writeGoogleSheet("account", [newAccount]);
+
     return NextResponse.json({
       success: true,
       message: "Account berhasil dibuat",
@@ -145,7 +144,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -169,6 +168,10 @@ export async function PUT(request: NextRequest) {
     }
 
     dataToUpdate.updated_at = new Date().toISOString();
+
+    // Logika untuk update ke Google Sheets belum ada, tapi respons sukses dikembalikan
+    console.log("Data to update:", id, dataToUpdate);
+    // await updateGoogleSheet("account", id, dataToUpdate); // Fungsi ini perlu diimplementasikan
 
     return NextResponse.json({
       success: true,

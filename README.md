@@ -49,6 +49,7 @@ cd my-app
 npm install --legacy-peer-deps
 ```
 
+
 ### 3. **Buat file `.env.local` di root project**
 
 ```env
@@ -57,7 +58,7 @@ GOOGLE_API_KEY=
 # ID Spreadsheet (dari Google Sheets utama RW)
 SHEET_ID=
 # Appscript Url
-NEXT_PUBLIC_APP_SCRIPT_URL=
+APP_SCRIPT_URL=
 # URL Google Sheets API
 NEXT_PUBLIC_GOOGLE_SHEETS_API_URL=
 # NextAuth (kalau dipake login)
@@ -67,6 +68,7 @@ NEXTAUTH_URL=http://localhost:3000
 # Enkripsi (buat encrypt.ts)
 ENCRYPTION_SECRET=mySuperSecretKey
 ```
+
 
 ### 4. **Jalankan server**
 

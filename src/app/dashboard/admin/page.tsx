@@ -12,6 +12,7 @@ import {
   FaHistory,
 } from "react-icons/fa";
 
+// Daftar endpoint API untuk mengambil data
 const endpoints = [
   { key: "warga", label: "Warga", url: "/api/warga", icon: <FaUsers /> },
   { key: "umkm", label: "UMKM", url: "/api/umkm", icon: <FaStore /> },
@@ -52,15 +53,10 @@ export default function AdminDashboard() {
 
   async function checkAuth() {
     try {
-      const res = await fetch("/api/auth/login", {
-        credentials: "include",
-      });
+      // Menggunakan endpoint /api/auth/session yang sudah kita buat
+      const res = await fetch("/api/auth/session");
       const json = await res.json();
-
-      if (
-        !json.success ||
-        !["admin", "super_admin"].includes(json.user?.role)
-      ) {
+      if (!res.ok || !json.success || !["admin", "super_admin"].includes(json.user?.role)) {
         router.push("/auth/login");
         return false;
       }
@@ -81,6 +77,7 @@ export default function AdminDashboard() {
     for (const ep of endpoints) {
       try {
         const res = await fetch(ep.url, {
+          cache: 'no-store' // Mencegah caching data API
           headers: {
             "Cache-Control": "no-cache",
             Pragma: "no-cache",
@@ -99,6 +96,7 @@ export default function AdminDashboard() {
         }
 
         const json = await res.json();
+        // Menangani respons yang mungkin berupa { data: [...] } atau [...]
         result[ep.key] = Array.isArray(json) ? json : json.data || [];
 
         // Clear error jika sukses
@@ -242,15 +240,11 @@ export default function AdminDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {filteredData[0] &&
-                      Object.keys(filteredData[0]).map((col) => (
-                        <th
-                          key={col}
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          {col}
-                        </th>
-                      ))}
+                    {filteredData[0] && Object.keys(filteredData[0]).map((col) => (
+                      <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {col.replace(/_/g, ' ')}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
