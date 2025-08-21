@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet } from "@/lib/googleSheets";
 import {
   getSession,
-  filterWargaData,
   canCreateWarga,
   canUpdateWarga,
   WargaData,

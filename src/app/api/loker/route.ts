@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import {
+  readGoogleSheet,
+  writeGoogleSheet,
+  SheetRow,
+} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 const headers = [
@@ -22,22 +26,18 @@ const headers = [
 
 export async function GET(request: NextRequest) {
   try {
-    // Cek session atau token di sini
     const session = await getSession(request);
+    const lokerData: SheetRow[] = await readGoogleSheet("loker");
 
-    const lokerData = await readGoogleSheet("loker");
-
-    if (session && session.role === "admin") {
-      // Jika admin, kirim semua data
+    if (session && ["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(lokerData);
     } else {
-      // Jika bukan admin, filter hanya yang aktif dan belum expired
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const activeLoker = lokerData.filter((loker: Record<string, any>) => {
+      const activeLoker = lokerData.filter((loker) => {
         const isActive = loker.status_aktif === "Aktif";
-        const deadlineDate = new Date(loker.deadline);
+        const deadlineDate = new Date(loker.deadline as string);
         deadlineDate.setHours(0, 0, 0, 0);
         const notExpired = deadlineDate >= today;
         return isActive && notExpired;
@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const newLoker = await request.json();
-    const lokerData = await readGoogleSheet("loker");
+    const lokerData: SheetRow[] = await readGoogleSheet("loker");
     const maxId = Math.max(
-      ...lokerData.map((l: Record<string, any>) => Number(l.id) || 0),
+      ...lokerData.map((l: SheetRow) => Number(l.id) || 0),
       0
     );
 
@@ -101,9 +101,9 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    const lokerData = await readGoogleSheet("loker");
+    const lokerData: SheetRow[] = await readGoogleSheet("loker");
     const index = lokerData.findIndex(
-      (l: Record<string, any>) => Number(l.id) === Number(updatedLoker.id)
+      (l: SheetRow) => Number(l.id) === Number(updatedLoker.id)
     );
     if (index === -1) {
       return NextResponse.json(
@@ -120,7 +120,6 @@ export async function PUT(request: NextRequest) {
           : updatedLoker[h] ?? lokerData[index][h] ?? "";
     });
 
-    // Kirim ke Apps Script dengan action "update"
     const writeResult = await writeGoogleSheet("loker", {
       action: "update",
       id: lokerToUpdate.id,
@@ -154,7 +153,6 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Kirim ke Apps Script dengan action "delete"
     const writeResult = await writeGoogleSheet("loker", {
       action: "delete",
       id,

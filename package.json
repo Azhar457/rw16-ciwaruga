@@ -17,6 +17,7 @@
     "bcryptjs": "^3.0.2",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
+    "eslint-plugin-react-hooks": "^6.1.0-canary-03fda05d-20250820",
     "express-rate-limit": "^8.0.1",
     "google-spreadsheet": "^5.0.2",
     "googleapis": "^156.0.0",
