@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import Image from "next/image";
 import Navbar from "../../components/ui/Navbar";
@@ -26,7 +25,7 @@ export default function Infografis() {
       <Navbar />
       <main className="min-h-screen bg-gray-50">
         {/* Header Section - Using same colors as Berita */}
-        <section className="py-12 bg-gradient-to-r from-emerald-600 to-emerald-200 text-white">
+        <section className="py-12 bg-primary-gradient text-white">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center">
               <h2 className="text-sm uppercase font-semibold text-emerald-100">
@@ -56,7 +55,7 @@ export default function Infografis() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === tab.id
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-primary text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-emerald-100 hover:text-emerald-700"
                   }`}
                 >
@@ -67,6 +66,28 @@ export default function Infografis() {
             </div>
           </div>
         </section>
+
+        {/* Quick Actions
+        <section className="py-6 bg-white">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex flex-wrap gap-4">
+              <button
+                onClick={() => setActiveTab("penduduk")}
+                className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
+              >
+                <span className="mr-2">👥</span>
+                Lihat Data Penduduk
+              </button>
+              <button
+                onClick={() => setActiveTab("apbrw")}
+                className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
+              >
+                <span className="mr-2">💰</span>
+                Lihat Anggaran RW
+              </button>
+            </div>
+          </div>
+        </section> */}
 
         {/* Tab Content */}
         <section className="py-8">

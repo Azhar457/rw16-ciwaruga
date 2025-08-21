@@ -1,15 +1,5 @@
 "use client";
 import { useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 
 export default function APBRWChart() {
   const [selectedYear, setSelectedYear] = useState("2024");
@@ -52,7 +42,7 @@ export default function APBRWChart() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-2xl font-bold text-emerald-600">
+        <h3 className="text-2xl font-bold text-primary">
           Anggaran Pendapatan dan Belanja RW (APBRW)
         </h3>
         <select
@@ -68,11 +58,11 @@ export default function APBRWChart() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg p-6 text-white">
+        <div className="card-emerald rounded-lg p-6">
           <div className="flex items-center">
             <div className="text-3xl mr-4">💰</div>
             <div>
-              <p className="text-emerald-100">Total Anggaran</p>
+              <p className="text-gray-200">Total Anggaran</p>
               <p className="text-xl font-bold">
                 {formatRupiah(apbrwData.totalAnggaran)}
               </p>
@@ -80,11 +70,11 @@ export default function APBRWChart() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+        <div className="card-primary rounded-lg p-6">
           <div className="flex items-center">
             <div className="text-3xl mr-4">📊</div>
             <div>
-              <p className="text-blue-100">Total Realisasi</p>
+              <p className="text-gray-200">Total Realisasi</p>
               <p className="text-xl font-bold">
                 {formatRupiah(apbrwData.totalRealisasi)}
               </p>
@@ -111,7 +101,7 @@ export default function APBRWChart() {
 
       {/* Budget by Category */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4 text-emerald-600">
+        <h4 className="text-lg font-semibold mb-4 text-primary">
           Anggaran per Kategori
         </h4>
         <div className="space-y-4">
@@ -125,7 +115,7 @@ export default function APBRWChart() {
                 className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-emerald-600">
+                  <span className="font-medium text-primary">
                     {item.category}
                   </span>
                   <span className="text-sm text-gray-600">
@@ -157,31 +147,60 @@ export default function APBRWChart() {
         </div>
       </div>
 
-      {/* Quarterly Report with Chart */}
+      {/* Quarterly Report */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4 text-emerald-600">
+        <h4 className="text-lg font-semibold mb-4 text-primary">
           Laporan Triwulan
         </h4>
-        <div className="w-full h-80">
-          <ResponsiveContainer>
-            <LineChart
-              data={apbrwData.byQuarter}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="quarter" />
-              <YAxis tickFormatter={(value) => formatRupiah(value as number)} />
-              <Tooltip formatter={(value) => formatRupiah(value as number)} />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="anggaran"
-                stroke="#8884d8"
-                activeDot={{ r: 8 }}
-              />
-              <Line type="monotone" dataKey="realisasi" stroke="#82ca9d" />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {apbrwData.byQuarter.map((quarter, index) => {
+            const realisasiPercentage =
+              (quarter.realisasi / quarter.anggaran) * 100;
+
+            return (
+              <div
+                key={index}
+                className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow"
+              >
+                <div className="text-center">
+                  <h5 className="font-semibold text-lg mb-2 text-primary">
+                    {quarter.quarter}
+                  </h5>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm text-gray-600">Anggaran</p>
+                      <p className="font-medium">
+                        {formatRupiah(quarter.anggaran)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Realisasi</p>
+                      <p className="font-medium text-emerald-600">
+                        {formatRupiah(quarter.realisasi)}
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <div className="bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            realisasiPercentage >= 80
+                              ? "bg-emerald-500"
+                              : realisasiPercentage >= 60
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                          style={{ width: `${realisasiPercentage}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-center mt-1">
+                        {realisasiPercentage.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
