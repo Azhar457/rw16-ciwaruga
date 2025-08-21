@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Baca data dari Google Sheets (ganti dengan nama sheet yang sesuai)
-    const authData = (await readGoogleSheet("Auth")) as unknown as UserAuth[];
+    const authData = (await readGoogleSheet(
+      "account"
+    )) as unknown as UserAuth[];
 
     if (!authData || authData.length === 0) {
       return NextResponse.json(

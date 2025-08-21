@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { decrypt, SessionData } from "@/lib/encrypt";
+import jwt from "jsonwebtoken";
 
 export interface SessionUser {
   id: number;
@@ -341,4 +342,14 @@ export function isBusinessHours(): boolean {
 
 export function checkRateLimit(): boolean {
   return true;
+}
+export async function verifySession(request: NextRequest) {
+  const token = request.cookies.get("session_token")?.value;
+  if (!token) return null;
+  try {
+    const user = jwt.verify(token, process.env.JWT_SECRET!);
+    return { user };
+  } catch {
+    return null;
+  }
 }

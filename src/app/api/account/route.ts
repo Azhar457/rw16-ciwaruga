@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
@@ -21,6 +21,9 @@ interface AccountData {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getSession(request);
+  if (!user) {
+    return NextResponse.json({ user: null }, { status: 200 });
   try {
     const session = await getSession(request);
 
@@ -46,8 +49,8 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  return NextResponse.json({ user }, { status: 200 });
 }
-
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
@@ -123,8 +126,6 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: "",
     };
-
-    await writeGoogleSheet("account", [newAccount]);
 
     return NextResponse.json({
       success: true,

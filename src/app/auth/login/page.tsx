@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -128,6 +129,10 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center text-sm text-gray-600">
               Belum punya akun? Hubungi admin RW untuk pendaftaran.
+              <br></br> atau kembali ke{" "}
+              <Link href="/" className="text-blue-600 hover:underline">
+                homepage
+              </Link>
             </div>
           </CardContent>
         </Card>
