@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         status: "monitoring",
       };
 
-      await writeGoogleSheet("blokir_attempts", [newRecord]);
+      await writeGoogleSheet("blokir_attempts", newRecord);
     }
 
     return NextResponse.json({

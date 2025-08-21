@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 
 const SHEET_ID = process.env.SHEET_ID;
@@ -13,7 +14,7 @@ if (!SHEET_ID || !API_KEY) {
 }
 
 export interface SheetRow {
-  [key: string]: string | number;
+  [key: string]: string | number | undefined;
 }
 
 interface GoogleSheetsResponse {
@@ -25,12 +26,66 @@ interface GoogleSheetsResponse {
   };
 }
 
-/**
- * Read data from Google Sheets API
- */
+type CacheEntry<T> = {
+  data: T;
+  timestamp: number;
+};
+
+const sheetCache: Record<string, CacheEntry<any>> = {};
+const CACHE_DURATION = 1000 * 60 * 5; // 5 menit
+
+function processGoogleSheetsResponse<T = SheetRow>(
+  data: GoogleSheetsResponse
+): T[] {
+  const values = data.values || [];
+  if (values.length === 0) return [];
+
+  const headers = values[0];
+  const rows = values.slice(1);
+
+  return rows.map((row: string[]) => {
+    const obj: Record<string, string | number> = {};
+    headers.forEach((header: string, i: number) => {
+      const value = row[i] || "";
+      if (
+        !isNaN(Number(value)) &&
+        value !== "" &&
+        value !== null &&
+        typeof value === "string"
+      ) {
+        if (
+          value === "0" ||
+          (!value.startsWith("0") &&
+            !value.includes("-") &&
+            !value.includes("+") &&
+            !value.includes("e"))
+        ) {
+          obj[header] = Number(value);
+        } else {
+          obj[header] = value;
+        }
+      } else {
+        obj[header] = value;
+      }
+    });
+    return obj as T;
+  });
+}
+
 export async function readGoogleSheet<T = SheetRow>(
   sheetName: string
 ): Promise<T[]> {
+  const now = Date.now();
+  const cacheKey = sheetName;
+
+  // Cek cache
+  if (
+    sheetCache[cacheKey] &&
+    now - sheetCache[cacheKey].timestamp < CACHE_DURATION
+  ) {
+    return sheetCache[cacheKey].data;
+  }
+
   try {
     if (!SHEET_ID || !API_KEY) {
       console.error("Missing Google Sheets configuration");
@@ -40,9 +95,6 @@ export async function readGoogleSheet<T = SheetRow>(
     const range = `${sheetName}!A:Z`;
     const encodedRange = encodeURIComponent(range);
     const url = `${BASE_URL}/${SHEET_ID}/values/${encodedRange}`;
-
-    console.log(`Fetching data from: ${sheetName}`);
-
     const response = await axios.get<GoogleSheetsResponse>(url, {
       params: {
         key: API_KEY,
@@ -61,54 +113,15 @@ export async function readGoogleSheet<T = SheetRow>(
       return [];
     }
 
-    const values = response.data.values || [];
-    console.log(`Fetched ${values.length} rows from ${sheetName}`);
+    const rows: T[] = processGoogleSheetsResponse<T>(response.data);
 
-    if (values.length === 0) {
-      console.log(`No data found in sheet: ${sheetName}`);
-      return [];
-    }
+    // Simpan ke cache
+    sheetCache[cacheKey] = {
+      data: rows,
+      timestamp: now,
+    };
 
-    // Headers adalah baris pertama
-    const headers = values[0];
-    const rows = values.slice(1);
-
-    // Convert ke array of objects
-    const result = rows.map((row: string[]) => {
-      const obj: Record<string, string | number> = {};
-
-      headers.forEach((header: string, headerIndex: number) => {
-        const value = row[headerIndex] || "";
-
-        // Convert numbers jika memungkinkan
-        if (
-          !isNaN(Number(value)) &&
-          value !== "" &&
-          value !== null &&
-          typeof value === "string"
-        ) {
-          // Check if it looks like a number (not starting with 0 unless it's just "0")
-          if (
-            value === "0" ||
-            (!value.startsWith("0") &&
-              !value.includes("-") &&
-              !value.includes("+") &&
-              !value.includes("e"))
-          ) {
-            obj[header] = Number(value);
-          } else {
-            obj[header] = value;
-          }
-        } else {
-          obj[header] = value;
-        }
-      });
-
-      return obj as T;
-    });
-
-    console.log(`Processed ${result.length} records from ${sheetName}`);
-    return result;
+    return rows;
   } catch (error) {
     console.error(`Error reading sheet ${sheetName}:`, error);
 
@@ -125,9 +138,6 @@ export async function readGoogleSheet<T = SheetRow>(
   }
 }
 
-/**
- * Get specific range from Google Sheets
- */
 export async function readGoogleSheetRange(
   sheetName: string,
   range: string = "A:Z"
@@ -162,9 +172,6 @@ export async function readGoogleSheetRange(
   }
 }
 
-/**
- * Verify warga data dengan Google Sheets API
- */
 export async function verifyWargaData(
   nikInput: string,
   kkInput: string
@@ -179,9 +186,7 @@ export async function verifyWargaData(
       return null;
     }
 
-    // Cari data yang match dengan NIK dan KK
     const foundWarga = wargaData.find((warga: SheetRow) => {
-      // Cek berbagai kemungkinan nama kolom
       return (
         String(warga.nik || warga.NIK || warga.nik_encrypted || "") ===
           nikInput &&
@@ -194,7 +199,6 @@ export async function verifyWargaData(
     if (foundWarga) {
       console.log("Warga data found and verified");
 
-      // Remove sensitive data sebelum return
       const safeData = { ...foundWarga };
       delete safeData.nik;
       delete safeData.kk;
@@ -222,9 +226,6 @@ export async function verifyWargaData(
   }
 }
 
-/**
- * Remove sensitive data for public access
- */
 export function sanitizeWargaData(data: SheetRow[]): SheetRow[] {
   return data.map((item) => {
     const safeData = { ...item };
@@ -240,9 +241,6 @@ export function sanitizeWargaData(data: SheetRow[]): SheetRow[] {
   });
 }
 
-/**
- * Filter active records
- */
 export function filterActiveRecords<T extends Record<string, unknown>>(
   data: T[]
 ): T[] {
@@ -255,9 +253,6 @@ export function filterActiveRecords<T extends Record<string, unknown>>(
   );
 }
 
-/**
- * Get Loker data (Job listings)
- */
 export async function getLoker(): Promise<SheetRow[]> {
   try {
     const data = await readGoogleSheet("loker");
@@ -268,9 +263,6 @@ export async function getLoker(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get UMKM data (Small businesses)
- */
 export async function getUmkm(): Promise<SheetRow[]> {
   try {
     const data = await readGoogleSheet("umkm");
@@ -281,9 +273,6 @@ export async function getUmkm(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Berita data (News)
- */
 export async function getBerita(): Promise<SheetRow[]> {
   try {
     const data = await readGoogleSheet("berita");
@@ -294,9 +283,6 @@ export async function getBerita(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Warga data (Citizens) - Sanitized for public access
- */
 export async function getWarga(): Promise<SheetRow[]> {
   try {
     const data = await readGoogleSheet("warga");
@@ -307,9 +293,6 @@ export async function getWarga(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get BPH data (Village council)
- */
 export async function getBph(): Promise<SheetRow[]> {
   try {
     return await readGoogleSheet("bph");
@@ -319,9 +302,6 @@ export async function getBph(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Lembaga Desa data (Village institutions)
- */
 export async function getLembagaDesa(): Promise<SheetRow[]> {
   try {
     return await readGoogleSheet("lembaga_desa");
@@ -331,9 +311,6 @@ export async function getLembagaDesa(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Account data (Admin accounts)
- */
 export async function getAccount(): Promise<SheetRow[]> {
   try {
     return await readGoogleSheet("account");
@@ -343,9 +320,6 @@ export async function getAccount(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Log data (Activity logs)
- */
 export async function getLog(): Promise<SheetRow[]> {
   try {
     return await readGoogleSheet("log");
@@ -355,9 +329,6 @@ export async function getLog(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Blokir Attempts data (Security logs)
- */
 export async function getBlokirAttempts(): Promise<SheetRow[]> {
   try {
     return await readGoogleSheet("blokir_attempts");
@@ -367,9 +338,6 @@ export async function getBlokirAttempts(): Promise<SheetRow[]> {
   }
 }
 
-/**
- * Get Subscriptions data
- */
 export async function getSubscriptions(): Promise<SheetRow[]> {
   try {
     return await readGoogleSheet("subscriptions");
@@ -379,13 +347,6 @@ export async function getSubscriptions(): Promise<SheetRow[]> {
   }
 }
 
-// ===========================================
-// UTILITY FUNCTIONS
-// ===========================================
-
-/**
- * Search records by field
- */
 export function searchRecords<T extends Record<string, SheetRow>>(
   data: T[],
   searchField: string,
@@ -397,9 +358,6 @@ export function searchRecords<T extends Record<string, SheetRow>>(
   });
 }
 
-/**
- * Sort records by field
- */
 export function sortRecords<T extends Record<string, SheetRow>>(
   data: T[],
   sortField: string,
@@ -424,9 +382,6 @@ export function sortRecords<T extends Record<string, SheetRow>>(
   });
 }
 
-/**
- * Paginate records
- */
 export function paginateRecords<T>(
   data: T[],
   page: number = 1,
@@ -458,21 +413,11 @@ export function paginateRecords<T>(
   };
 }
 
-// ===========================================
-// LEGACY COMPATIBILITY FUNCTIONS
-// ===========================================
-
-/**
- * Legacy function for backward compatibility
- */
 export async function getSheetData(range: string): Promise<string[][]> {
   const [sheetName] = range.split("!");
   return await readGoogleSheetRange(sheetName, range.split("!")[1] || "A:Z");
 }
 
-/**
- * Function to write data to Google Sheets via Apps Script API
- */
 export async function writeGoogleSheet(
   sheetName: string,
   data: SheetRow | { action: string; id?: string | number; data?: SheetRow }
@@ -482,8 +427,7 @@ export async function writeGoogleSheet(
       return { success: false, message: "Apps Script URL not configured" };
     }
 
-    // Tentukan action
-    let payload: any;
+    let payload: unknown;
     if ("action" in data) {
       payload = { sheetName, ...data };
     } else {
@@ -502,13 +446,11 @@ export async function writeGoogleSheet(
         message: response.data.error || "Gagal menulis data",
       };
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return { success: false, message: "Internal server error" };
   }
 }
-/**
- * Legacy function - now read-only, no more write operations
- */
 export async function postSheetData(): Promise<{
   success: boolean;
   message: string;
@@ -524,14 +466,39 @@ export async function postSheetData(): Promise<{
   };
 }
 
-/**
- * Mock write functions for compatibility
- */
-export async function updateGoogleSheet(): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  return { success: false, message: "Write operations not supported" };
+export async function updateGoogleSheet({
+  sheetName,
+  id,
+  data,
+}: {
+  sheetName: string;
+  id: string | number;
+  data: SheetRow;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      return { success: false, message: "Apps Script URL not configured" };
+    }
+    const payload = {
+      action: "update",
+      sheetName,
+      id,
+      data,
+    };
+    const response = await axios.post(APPS_SCRIPT_URL, payload, {
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.data.success) {
+      return { success: true, message: "Operasi berhasil" };
+    } else {
+      return {
+        success: false,
+        message: response.data.error || "Gagal update data",
+      };
+    }
+  } catch {
+    return { success: false, message: "Internal server error" };
+  }
 }
 
 export async function deleteGoogleSheet(): Promise<{

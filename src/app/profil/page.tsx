@@ -7,7 +7,6 @@ import Footer from "@/components/ui/Footer";
 
 export default function Home() {
   const [showMoreMisi, setShowMoreMisi] = useState(false);
-  const jabatan = ["Kepala Desa", "Badan Desa", "Tangan Desa", "Kaki Desa"];
 
   const handleToggleMisi = () => {
     setShowMoreMisi(!showMoreMisi);
@@ -40,21 +39,25 @@ export default function Home() {
       <section className="py-20 bg-gray-50 px-6">
         <div className="container mx-auto max-w-4xl">
           <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border-t-4 border-emerald-500">
-            <h3 className="text-3xl font-bold text-emerald-500 text-center mb-4">Visi</h3>
+            <h3 className="text-3xl font-bold text-emerald-500 text-center mb-4">
+              Visi
+            </h3>
             <p className="text-center text-lg text-gray-700">
               AMANAH (AGAMIS, MANDIRI, ASPIRATIF, NYAMAN, AMAN, HUMANIS)
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-8 border-t-4 border-emerald-500">
-            <h3 className="text-3xl font-bold text-emerald-500 text-center mb-4">Misi</h3>
+            <h3 className="text-3xl font-bold text-emerald-500 text-center mb-4">
+              Misi
+            </h3>
             <ol className="list-decimal list-inside text-lg text-gray-700 space-y-2">
               {misiList.slice(0, 5).map((item, index) => (
                 <li key={index}>{item}</li>
               ))}
               {showMoreMisi &&
-                misiList.slice(5).map((item, index) => (
-                  <li key={index + 5}>{item}</li>
-                ))}
+                misiList
+                  .slice(5)
+                  .map((item, index) => <li key={index + 5}>{item}</li>)}
             </ol>
             <button
               onClick={handleToggleMisi}
@@ -86,23 +89,55 @@ export default function Home() {
       <section className="py-20 bg-white px-6">
         <div className="container mx-auto max-w-4xl">
           <div className="bg-gray-50 rounded-xl shadow-lg p-8">
-            <h3 className="text-3xl font-bold text-emerald-500 mb-4">Sejarah Desa Ciwaruga</h3>
+            <h3 className="text-3xl font-bold text-emerald-500 mb-4">
+              Sejarah Desa Ciwaruga
+            </h3>
             <div className="prose max-w-none text-gray-700">
               <p className="font-bold mb-2">Sejarah Singkat Desa Ciwaruga</p>
               <p>
-                Desa Ciwaruga terletak di Kecamatan Parongpong, Kabupaten Bandung Barat, Provinsi Jawa Barat. Desa ini berbatasan langsung dengan Kota Bandung dan Kota Cimahi, menjadikannya kawasan strategis yang menghubungkan wilayah perkotaan dan pedesaan. Dengan luas wilayah sekitar 279,053 hektar dan jumlah penduduk mencapai 13.455 jiwa, Ciwaruga merupakan desa yang dinamis dan berkembang pesat.
+                Desa Ciwaruga terletak di Kecamatan Parongpong, Kabupaten
+                Bandung Barat, Provinsi Jawa Barat. Desa ini berbatasan langsung
+                dengan Kota Bandung dan Kota Cimahi, menjadikannya kawasan
+                strategis yang menghubungkan wilayah perkotaan dan pedesaan.
+                Dengan luas wilayah sekitar 279,053 hektar dan jumlah penduduk
+                mencapai 13.455 jiwa, Ciwaruga merupakan desa yang dinamis dan
+                berkembang pesat.
               </p>
               <p className="mt-4">
-                Asal-usul nama "Ciwaruga" berasal dari bahasa Sunda, di mana "Ci" berarti air dan "Waruga" berarti tubuh atau jasad. Menurut cerita masyarakat setempat, dahulu kala daerah ini merupakan tempat pembuangan jasad-jasad tak dikenal. Namun, ada juga versi lain yang menyatakan bahwa nama tersebut berasal dari "Cai" (air) dan "Raga" (jiwa), merujuk pada sumber air deras yang dianggap sebagai sumber kehidupan bagi warga sekitar. Sumber air ini sangat membantu masyarakat, sehingga dianggap sebagai "Jiwa" bagi daerah tersebut.
+                Asal-usul nama &quot;Ciwaruga&quot; berasal dari bahasa Sunda,
+                di mana &quot;Ci&quot; berarti air dan &quot;Waruga&quot;
+                berarti tubuh atau jasad. Menurut cerita masyarakat setempat,
+                dahulu kala daerah ini merupakan tempat pembuangan jasad-jasad
+                tak dikenal. Namun, ada juga versi lain yang menyatakan bahwa
+                nama tersebut berasal dari &quot;Cai&quot; (air) dan
+                &quot;Raga&quot; (jiwa), merujuk pada sumber air deras yang
+                dianggap sebagai sumber kehidupan bagi warga sekitar. Sumber air
+                ini sangat membantu masyarakat, sehingga dianggap sebagai
+                &quot;Jiwa&quot; bagi daerah tersebut.
               </p>
               <p className="mt-4">
-                Sayangnya, informasi mengenai tahun berdirinya Desa Ciwaruga belum tersedia secara resmi dalam sumber yang ada. Namun, desa ini telah mengalami perkembangan signifikan seiring dengan pertumbuhan wilayah sekitarnya dan peningkatan jumlah penduduk.Perkembangan ini mencerminkan dinamika sosial dan ekonomi yang positif di kawasan tersebut.
+                Sayangnya, informasi mengenai tahun berdirinya Desa Ciwaruga
+                belum tersedia secara resmi dalam sumber yang ada. Namun, desa
+                ini telah mengalami perkembangan signifikan seiring dengan
+                pertumbuhan wilayah sekitarnya dan peningkatan jumlah
+                penduduk.Perkembangan ini mencerminkan dinamika sosial dan
+                ekonomi yang positif di kawasan tersebut.
               </p>
               <p className="mt-4">
-                Mengenai kepemimpinan desa, salah satu nama kepala desa yang tercatat adalah Sulaeman Jajuli, S.Pd., yang menjabat hingga tahun 2013. Sayangnya, daftar lengkap kepala desa dari masa ke masa belum tersedia dalam sumber yang ada. Informasi lebih lanjut mengenai kepemimpinan desa dapat diperoleh melalui arsip desa atau dinas terkait.
+                Mengenai kepemimpinan desa, salah satu nama kepala desa yang
+                tercatat adalah Sulaeman Jajuli, S.Pd., yang menjabat hingga
+                tahun 2013. Sayangnya, daftar lengkap kepala desa dari masa ke
+                masa belum tersedia dalam sumber yang ada. Informasi lebih
+                lanjut mengenai kepemimpinan desa dapat diperoleh melalui arsip
+                desa atau dinas terkait.
               </p>
               <p className="mt-4">
-                Mengenai kepemimpinan desa, salah satu nama kepala desa yang tercatat adalah Sulaeman Jajuli, S.Pd., yang menjabat hingga tahun 2013. Sayangnya, daftar lengkap kepala desa dari masa ke masa belum tersedia dalam sumber yang ada. Informasi lebih lanjut mengenai kepemimpinan desa dapat diperoleh melalui arsip desa atau dinas terkait.
+                Mengenai kepemimpinan desa, salah satu nama kepala desa yang
+                tercatat adalah Sulaeman Jajuli, S.Pd., yang menjabat hingga
+                tahun 2013. Sayangnya, daftar lengkap kepala desa dari masa ke
+                masa belum tersedia dalam sumber yang ada. Informasi lebih
+                lanjut mengenai kepemimpinan desa dapat diperoleh melalui arsip
+                desa atau dinas terkait.
               </p>
             </div>
           </div>
@@ -112,10 +147,14 @@ export default function Home() {
       {/* Bagan Desa Section */}
       <section className="py-20 bg-gray-50 px-6">
         <div className="container mx-auto max-w-6xl">
-          <h3 className="text-3xl font-bold text-emerald-500 text-center mb-12">Bagan Desa</h3>
+          <h3 className="text-3xl font-bold text-emerald-500 text-center mb-12">
+            Bagan Desa
+          </h3>
           <div className="flex flex-col lg:flex-row gap-8 justify-center">
             <div className="bg-white rounded-xl shadow-lg p-6 lg:p-8 flex-1">
-              <h4 className="text-xl font-semibold text-gray-800 mb-4">Struktur Organisasi Pemerintahan Desa</h4>
+              <h4 className="text-xl font-semibold text-gray-800 mb-4">
+                Struktur Organisasi Pemerintahan Desa
+              </h4>
               <div className="relative w-full h-auto">
                 <Image
                   src="/struktur-organisasi-pemerintahan.jpg"
@@ -128,7 +167,9 @@ export default function Home() {
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6 lg:p-8 flex-1">
-              <h4 className="text-xl font-semibold text-gray-800 mb-4">Struktur Organisasi Badan Permusyawaratan Desa</h4>
+              <h4 className="text-xl font-semibold text-gray-800 mb-4">
+                Struktur Organisasi Badan Permusyawaratan Desa
+              </h4>
               <div className="relative w-full h-auto">
                 <Image
                   src="/struktur-organisasi-bpd.jpg"
@@ -146,10 +187,14 @@ export default function Home() {
       {/* Peta Lokasi Desa Section */}
       <section className="py-20 bg-white px-6">
         <div className="container mx-auto max-w-6xl">
-          <h3 className="text-3xl font-bold text-emerald-500 text-center mb-12">Peta Lokasi Desa</h3>
+          <h3 className="text-3xl font-bold text-emerald-500 text-center mb-12">
+            Peta Lokasi Desa
+          </h3>
           <div className="flex flex-col md:flex-row gap-8 justify-center items-stretch">
             <div className="bg-white rounded-xl shadow-lg p-8 border-t-4 border-emerald-500 flex-1">
-              <h4 className="text-xl font-semibold text-gray-800 mb-4">Batas Desa:</h4>
+              <h4 className="text-xl font-semibold text-gray-800 mb-4">
+                Batas Desa:
+              </h4>
               <div className="grid grid-cols-2 gap-4 text-lg text-gray-700">
                 <div>
                   <span className="font-medium">Utara</span>
@@ -169,11 +214,15 @@ export default function Home() {
                 </div>
               </div>
               <div className="mt-8">
-                <h4 className="text-xl font-semibold text-gray-800 mb-2">Luas Desa:</h4>
+                <h4 className="text-xl font-semibold text-gray-800 mb-2">
+                  Luas Desa:
+                </h4>
                 <p className="text-lg text-gray-700">0 m²</p>
               </div>
               <div className="mt-4">
-                <h4 className="text-xl font-semibold text-gray-800 mb-2">Jumlah Penduduk:</h4>
+                <h4 className="text-xl font-semibold text-gray-800 mb-2">
+                  Jumlah Penduduk:
+                </h4>
                 <p className="text-lg text-gray-700">16.355 Jiwa</p>
               </div>
             </div>

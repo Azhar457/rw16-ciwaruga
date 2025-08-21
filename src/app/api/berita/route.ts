@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 interface BeritaData {
@@ -21,7 +21,6 @@ export async function GET() {
   try {
     const beritaData = (await readGoogleSheet("berita")) as BeritaData[];
 
-    // Filter hanya yang published untuk public
     const publishedBerita = beritaData
       .filter((berita) => berita.status_publish === "Published")
       .sort(
@@ -59,8 +58,7 @@ export async function POST(request: NextRequest) {
 
     const maxId = Math.max(...beritaData.map((b) => b.id), 0);
 
-    // Berita dari ketua_rw otomatis published (berita utama)
-    const statusPublish = session.role === "ketua_rw" ? "published" : "pending";
+    const statusPublish = session.role === "ketua_rw" ? "Published" : "Pending";
 
     const beritaToAdd = {
       ...newBerita,
@@ -70,7 +68,7 @@ export async function POST(request: NextRequest) {
       views: 0,
       admin_approver: session.role === "ketua_rw" ? session.nama_lengkap : "",
       published_at:
-        statusPublish === "published" ? new Date().toISOString() : "",
+        statusPublish === "Published" ? new Date().toISOString() : "",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

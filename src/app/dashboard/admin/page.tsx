@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useEffect, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FaUsers,
@@ -11,9 +12,19 @@ import {
   FaUserShield,
   FaHistory,
 } from "react-icons/fa";
+import { SessionUser } from "@/lib/auth";
+// Define types for the data fetched from the API
+interface DashboardData {
+  [key: string]: any[];
+}
+interface Endpoint {
+  key: string;
+  label: string;
+  url: string;
+  icon: JSX.Element;
+}
 
-// Daftar endpoint API untuk mengambil data
-const endpoints = [
+const endpoints: Endpoint[] = [
   { key: "warga", label: "Warga", url: "/api/warga", icon: <FaUsers /> },
   { key: "umkm", label: "UMKM", url: "/api/umkm", icon: <FaStore /> },
   { key: "berita", label: "Berita", url: "/api/berita", icon: <FaNewspaper /> },
@@ -37,26 +48,21 @@ const endpoints = [
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("warga");
-  const [data, setData] = useState<Record<string, any[]>>({});
+  const [data, setData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    checkAuth().then((isAuth) => {
-      if (isAuth) {
-        fetchAll();
-      }
-    });
-  }, []);
+  const [session, setSession] = useState<SessionUser | null>(null);
 
   async function checkAuth() {
     try {
-      // Menggunakan endpoint /api/auth/session yang sudah kita buat
       const res = await fetch("/api/auth/session");
       const json = await res.json();
-      if (!res.ok || !json.success || !["admin", "super_admin"].includes(json.user?.role)) {
+      if (
+        !res.ok ||
+        !json.success ||
+        !["admin", "super_admin"].includes(json.user?.role)
+      ) {
         router.push("/auth/login");
         return false;
       }
@@ -70,22 +76,27 @@ export default function AdminDashboard() {
     }
   }
 
+  useEffect(() => {
+    checkAuth().then((isAuth) => {
+      if (isAuth) {
+        fetchAll();
+      }
+    });
+  }, [checkAuth]);
+
   async function fetchAll() {
     setLoading(true);
-    const result: Record<string, any[]> = {};
-
+    const result: DashboardData = {};
     for (const ep of endpoints) {
       try {
         const res = await fetch(ep.url, {
-          cache: 'no-store' // Mencegah caching data API
+          cache: "no-store",
           headers: {
             "Cache-Control": "no-cache",
             Pragma: "no-cache",
           },
           credentials: "include",
-          cache: "no-store",
         });
-
         if (!res.ok) {
           const error = await res.json();
           setErrors((prev) => ({
@@ -96,10 +107,8 @@ export default function AdminDashboard() {
         }
 
         const json = await res.json();
-        // Menangani respons yang mungkin berupa { data: [...] } atau [...]
         result[ep.key] = Array.isArray(json) ? json : json.data || [];
 
-        // Clear error jika sukses
         setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[ep.key];
@@ -119,7 +128,6 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 
-  // Filter data berdasarkan search
   const filteredData =
     data[activeTab]?.filter((row) =>
       Object.values(row).some((val) =>
@@ -141,7 +149,6 @@ export default function AdminDashboard() {
   return (
     <main className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-lg p-6 mb-8 shadow-lg">
           <div className="flex justify-between items-center">
             <div>
@@ -159,7 +166,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {endpoints.map((ep) => (
             <div
@@ -192,7 +198,6 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Content Area */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-800">
@@ -222,14 +227,12 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Error Message */}
           {errors[activeTab] && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
               ⚠️ {errors[activeTab]}
             </div>
           )}
 
-          {/* Data Table */}
           {loading ? (
             <div className="py-20 text-center">
               <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -240,11 +243,15 @@ export default function AdminDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {filteredData[0] && Object.keys(filteredData[0]).map((col) => (
-                      <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {col.replace(/_/g, ' ')}
-                      </th>
-                    ))}
+                    {filteredData[0] &&
+                      Object.keys(filteredData[0]).map((col) => (
+                        <th
+                          key={col}
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {col.replace(/_/g, " ")}
+                        </th>
+                      ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
