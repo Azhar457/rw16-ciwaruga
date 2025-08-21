@@ -24,6 +24,30 @@ export async function GET(request: NextRequest) {
   const user = await getSession(request);
   if (!user) {
     return NextResponse.json({ user: null }, { status: 200 });
+  try {
+    const session = await getSession(request);
+
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 403 }
+      );
+    }
+
+    const accountData = await readGoogleSheet<AccountData>("account");
+
+    const safeAccountData = accountData.map((acc) => ({
+      ...acc,
+      password_hash: "***HIDDEN***",
+    }));
+
+    return NextResponse.json(safeAccountData);
+  } catch (error) {
+    console.error("Error:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
   }
   return NextResponse.json({ user }, { status: 200 });
 }
