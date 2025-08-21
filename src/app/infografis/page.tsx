@@ -25,7 +25,7 @@ export default function Infografis() {
       <Navbar />
       <main className="min-h-screen bg-gray-50">
         {/* Header Section - Using same colors as Berita */}
-        <section className="py-12 bg-primary-gradient text-white">
+        <section className="py-12 bg-emerald-500 text-white">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center">
               <h2 className="text-sm uppercase font-semibold text-emerald-100">
