@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(safeAccountData);
   } catch (error) {
-    console.error("Error fetching accounts:", error);
+    console.error("Error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
