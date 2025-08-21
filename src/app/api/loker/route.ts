@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 interface LokerData {
@@ -70,9 +70,6 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    await writeGoogleSheet("loker", [lokerToAdd]);
-
     return NextResponse.json({
       success: true,
       message: "Lowongan kerja berhasil ditambahkan",

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet, writeGoogleSheet, filterActiveRecords } from "@/lib/googleSheets"; // Tambahkan import filterActiveRecords
 import { getSession } from "@/lib/auth";
 
 interface LembagaData {
@@ -21,10 +21,9 @@ export async function GET() {
       "lembaga_desa"
     )) as LembagaData[];
 
-    // Filter hanya yang aktif untuk public
-    const activeLembaga = lembagaData.filter(
-      (lembaga) => lembaga.status_aktif === "aktif"
-    );
+    // --- PERUBAHAN DI SINI ---
+    // Menggunakan fungsi filter yang lebih andal, bukan filter manual
+    const activeLembaga = filterActiveRecords(lembagaData);
 
     return NextResponse.json(activeLembaga);
   } catch (error) {
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest) {
       "lembaga_desa"
     )) as LembagaData[];
 
-    const maxId = Math.max(...lembagaData.map((l) => l.id), 0);
+    const maxId = Math.max(0, ...lembagaData.map((l) => l.id));
     const lembagaToAdd = {
       ...newLembaga,
       id: maxId + 1,

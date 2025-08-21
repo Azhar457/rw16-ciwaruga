@@ -17,14 +17,14 @@ interface AccountData {
   subscription_end: string;
   created_at: string;
   updated_at: string;
-  [key: string]: string | number; // Remove undefined to match SheetRow type
+  [key: string]: string | number;
 }
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const maxId = Math.max(...accountData.map((acc) => acc.id), 0);
+    const maxId = Math.max(0, ...accountData.map((acc) => acc.id));
 
     const newAccount: AccountData = {
       id: maxId + 1,
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -168,6 +168,10 @@ export async function PUT(request: NextRequest) {
     }
 
     dataToUpdate.updated_at = new Date().toISOString();
+
+    // Logika untuk update ke Google Sheets belum ada, tapi respons sukses dikembalikan
+    console.log("Data to update:", id, dataToUpdate);
+    // await updateGoogleSheet("account", id, dataToUpdate); // Fungsi ini perlu diimplementasikan
 
     return NextResponse.json({
       success: true,

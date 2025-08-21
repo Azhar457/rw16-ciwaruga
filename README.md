@@ -45,6 +45,7 @@ cd my-app
 npm install --legacy-peer-deps
 ```
 
+
 ### 3. **Buat file `.env.local` di root project**
 ```env
 # API Key Google sudah menambahkan Spreadheet API
@@ -63,6 +64,7 @@ NEXTAUTH_URL=http://localhost:3000
 # Enkripsi (buat encrypt.ts)
 ENCRYPTION_SECRET=mySuperSecretKey
 ```
+
 
 ### 4. **Jalankan server**
 ```bash
