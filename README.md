@@ -53,9 +53,9 @@ npm install --legacy-peer-deps
 
 ```env
 # API Key Google sudah menambahkan Spreadheet API
-NEXT_PUBLIC_GOOGLE_API_KEY=
+GOOGLE_API_KEY=
 # ID Spreadsheet (dari Google Sheets utama RW)
-NEXT_PUBLIC_SHEET_ID=
+SHEET_ID=
 # Appscript Url
 NEXT_PUBLIC_APP_SCRIPT_URL=
 # URL Google Sheets API

@@ -66,7 +66,12 @@ export default function LokerPage() {
   const formatRupiah = (salary: string) => salary || "-";
 
   const isExpired = (batasLamaran: string) => {
-    return new Date(batasLamaran) < new Date();
+    // Deadline tanpa jam, bandingkan dengan awal hari ini
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadlineDate = new Date(batasLamaran);
+    deadlineDate.setHours(0, 0, 0, 0);
+    return deadlineDate < today;
   };
 
   if (loading) {

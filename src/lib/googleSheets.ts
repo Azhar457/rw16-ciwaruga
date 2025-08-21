@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const SHEET_ID = process.env.NEXT_PUBLIC_SHEET_ID;
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+const SHEET_ID = process.env.SHEET_ID;
+const API_KEY = process.env.GOOGLE_API_KEY;
+const APPS_SCRIPT_URL = process.env.APP_SCRIPT_URL;
 const BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 
 if (!SHEET_ID || !API_KEY) {
@@ -470,6 +471,42 @@ export async function getSheetData(range: string): Promise<string[][]> {
 }
 
 /**
+ * Function to write data to Google Sheets via Apps Script API
+ */
+export async function writeGoogleSheet(
+  sheetName: string,
+  data: SheetRow | { action: string; id?: string | number; data?: SheetRow }
+): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!APPS_SCRIPT_URL) {
+      return { success: false, message: "Apps Script URL not configured" };
+    }
+
+    // Tentukan action
+    let payload: any;
+    if ("action" in data) {
+      payload = { sheetName, ...data };
+    } else {
+      payload = { action: "append", sheetName, data };
+    }
+
+    const response = await axios.post(APPS_SCRIPT_URL, payload, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (response.data.success) {
+      return { success: true, message: "Operasi berhasil" };
+    } else {
+      return {
+        success: false,
+        message: response.data.error || "Gagal menulis data",
+      };
+    }
+  } catch (error) {
+    return { success: false, message: "Internal server error" };
+  }
+}
+/**
  * Legacy function - now read-only, no more write operations
  */
 export async function postSheetData(): Promise<{
@@ -490,15 +527,6 @@ export async function postSheetData(): Promise<{
 /**
  * Mock write functions for compatibility
  */
-export async function writeGoogleSheet(): Promise<{
-  sheetName: string;
-  data: unknown[];
-  success: boolean;
-  message: string;
-}> {
-  return { sheetName: "", data: [], success: false, message: "Write operations not supported" };
-}
-
 export async function updateGoogleSheet(): Promise<{
   success: boolean;
   message: string;

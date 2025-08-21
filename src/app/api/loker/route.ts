@@ -2,40 +2,50 @@ import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
-interface LokerData {
-  id: number;
-  posisi: string;
-  perusahaan: string;
-  deskripsi: string;
-  gambar_url: string;
-  requirements: string;
-  salary_range: string;
-  lokasi: string;
-  contact_method: string;
-  contact_person: string;
-  status_aktif: string;
-  admin_poster: string;
-  deadline: string;
-  created_at: string;
-  updated_at: string;
-}
+const headers = [
+  "id",
+  "posisi",
+  "perusahaan",
+  "deskripsi",
+  "gambar_url",
+  "requirements",
+  "salary_range",
+  "lokasi",
+  "contact_method",
+  "contact_person",
+  "status_aktif",
+  "admin_poster",
+  "deadline",
+  "created_at",
+  "updated_at",
+];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const lokerData = (await readGoogleSheet(
-      "loker"
-    )) as unknown as LokerData[];
+    // Cek session atau token di sini
+    const session = await getSession(request);
 
-    // Filter hanya yang aktif dan belum expired
-    const activeLoker = lokerData.filter((loker) => {
-      const isActive = loker.status_aktif === "Aktif";
-      const notExpired = new Date(loker.deadline) > new Date();
-      return isActive && notExpired;
-    });
+    const lokerData = await readGoogleSheet("loker");
 
-    return NextResponse.json(activeLoker);
-  } catch (error) {
-    console.error("Error fetching loker:", error);
+    if (session && session.role === "admin") {
+      // Jika admin, kirim semua data
+      return NextResponse.json(lokerData);
+    } else {
+      // Jika bukan admin, filter hanya yang aktif dan belum expired
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const activeLoker = lokerData.filter((loker: Record<string, any>) => {
+        const isActive = loker.status_aktif === "Aktif";
+        const deadlineDate = new Date(loker.deadline);
+        deadlineDate.setHours(0, 0, 0, 0);
+        const notExpired = deadlineDate >= today;
+        return isActive && notExpired;
+      });
+
+      return NextResponse.json(activeLoker);
+    }
+  } catch {
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -45,43 +55,121 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession(request);
-    // Hanya ketua_rw yang boleh post loker
-    if (!session || session.role !== "ketua_rw") {
+    const newLoker = await request.json();
+    const lokerData = await readGoogleSheet("loker");
+    const maxId = Math.max(
+      ...lokerData.map((l: Record<string, any>) => Number(l.id) || 0),
+      0
+    );
+
+    const lokerToAdd: Record<string, string | number> = {};
+    headers.forEach((h) => {
+      lokerToAdd[h] =
+        h === "id"
+          ? maxId + 1
+          : h === "created_at" || h === "updated_at"
+          ? new Date().toISOString()
+          : newLoker[h] ?? "";
+    });
+
+    const writeResult = await writeGoogleSheet("loker", lokerToAdd);
+    if (!writeResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized: hanya admin RW yang bisa menambah loker",
-        },
-        { status: 403 }
+        { success: false, message: writeResult.message },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      message: "Lowongan kerja berhasil ditambahkan",
+      data: lokerToAdd,
+    });
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const updatedLoker = await request.json();
+    if (!updatedLoker.id) {
+      return NextResponse.json(
+        { success: false, message: "ID loker harus disertakan" },
+        { status: 400 }
+      );
+    }
+    const lokerData = await readGoogleSheet("loker");
+    const index = lokerData.findIndex(
+      (l: Record<string, any>) => Number(l.id) === Number(updatedLoker.id)
+    );
+    if (index === -1) {
+      return NextResponse.json(
+        { success: false, message: "Loker tidak ditemukan" },
+        { status: 404 }
       );
     }
 
-    const newLoker = await request.json();
-    const lokerData = (await readGoogleSheet(
-      "loker"
-    )) as unknown as LokerData[];
-    const maxId = Math.max(...lokerData.map((l) => l.id), 0);
-    const lokerToAdd = {
-      ...newLoker,
-      id: maxId + 1,
-      admin_poster: session.nama_lengkap,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    const lokerToUpdate: Record<string, string | number> = {};
+    headers.forEach((h) => {
+      lokerToUpdate[h] =
+        h === "updated_at"
+          ? new Date().toISOString()
+          : updatedLoker[h] ?? lokerData[index][h] ?? "";
+    });
 
-    // Fungsi writeGoogleSheet saat ini hanya mock, tidak benar-benar menulis ke Google Sheets
-    // Jika ingin benar-benar menulis, gunakan Apps Script atau API khusus
-    await writeGoogleSheet(); // Tidak perlu argumen
-
+    // Kirim ke Apps Script dengan action "update"
+    const writeResult = await writeGoogleSheet("loker", {
+      action: "update",
+      id: lokerToUpdate.id,
+      data: lokerToUpdate,
+    });
+    if (!writeResult.success) {
+      return NextResponse.json(
+        { success: false, message: writeResult.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({
       success: true,
-      message:
-        "Lowongan kerja berhasil ditambahkan (simulasi, belum masuk sheet)",
-      data: lokerToAdd,
+      message: "Lowongan kerja berhasil diperbarui",
+      data: lokerToUpdate,
     });
-  } catch (error) {
-    console.error("Error adding loker:", error);
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { id } = await request.json();
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "ID loker harus disertakan" },
+        { status: 400 }
+      );
+    }
+    // Kirim ke Apps Script dengan action "delete"
+    const writeResult = await writeGoogleSheet("loker", {
+      action: "delete",
+      id,
+    });
+    if (!writeResult.success) {
+      return NextResponse.json(
+        { success: false, message: writeResult.message },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      message: "Lowongan kerja berhasil dihapus",
+    });
+  } catch {
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

@@ -1,214 +1,346 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSession } from "@/hooks/useSession";
-import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
-import { Card, CardContent } from "@/components/ui/Card";
+import Image from "next/image";
+interface LokerData {
+  id: number;
+  posisi: string;
+  perusahaan: string;
+  deskripsi: string;
+  gambar_url: string;
+  requirements: string;
+  salary_range: string;
+  lokasi: string;
+  contact_method: string;
+  contact_person: string;
+  status_aktif: string;
+  admin_poster: string;
+  deadline: string;
+  created_at: string;
+  updated_at: string;
+}
 
-export default function CreateLokerPage() {
-  const [form, setForm] = useState({
-    posisi: "",
-    perusahaan: "",
-    deskripsi: "",
-    gambar_url: "",
-    requirements: "",
-    salary_range: "",
-    lokasi: "",
-    contact_method: "",
-    contact_person: "",
-    deadline: "",
-  });
+const defaultForm: Omit<
+  LokerData,
+  "id" | "created_at" | "updated_at" | "admin_poster" | "status_aktif"
+> = {
+  posisi: "",
+  perusahaan: "",
+  deskripsi: "",
+  gambar_url: "",
+  requirements: "",
+  salary_range: "",
+  lokasi: "",
+  contact_method: "",
+  contact_person: "",
+  deadline: "",
+};
+
+export default function AdminLokerPage() {
+  const [lokerList, setLokerList] = useState<LokerData[]>([]);
+  const [form, setForm] = useState<typeof defaultForm>(defaultForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const router = useRouter();
-  const { session, loading: sessionLoading } = useSession();
 
   useEffect(() => {
-    if (!sessionLoading && !session?.user) {
-      router.replace("/auth/login");
-    }
-  }, [session, sessionLoading, router]);
+    fetchLoker();
+  }, []);
 
-  const handleChange = (
+  async function fetchLoker() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/loker");
+      const data = await res.json();
+      setLokerList(Array.isArray(data) ? data : []);
+    } catch {
+      setError("Gagal mengambil data loker");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleChange(
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
-  ) => {
+  ) {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function handleEdit(loker: LokerData) {
+    setEditingId(loker.id);
+    setForm({
+      posisi: loker.posisi,
+      perusahaan: loker.perusahaan,
+      deskripsi: loker.deskripsi,
+      gambar_url: loker.gambar_url,
+      requirements: loker.requirements,
+      salary_range: loker.salary_range,
+      lokasi: loker.lokasi,
+      contact_method: loker.contact_method,
+      contact_person: loker.contact_person,
+      deadline: loker.deadline,
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("Yakin ingin menghapus loker ini?")) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/loker", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setSuccess("Berhasil menghapus loker");
+        fetchLoker();
+      } else {
+        setError(result.message || "Gagal menghapus loker");
+      }
+    } catch {
+      setError("Gagal menghapus loker");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess("");
     try {
-      // Status otomatis "Tidak Aktif" saat input
       const payload = {
         ...form,
         status_aktif: "Tidak Aktif",
+        admin_poster: "Admin", // Atur sesuai user login jika sudah ada
       };
-      const res = await fetch("/api/loker", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await res.json();
+      let res, result;
+      if (editingId) {
+        res = await fetch("/api/loker", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, id: editingId }),
+        });
+        result = await res.json();
+      } else {
+        res = await fetch("/api/loker", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        result = await res.json();
+      }
       if (result.success) {
         setSuccess(
-          "Lowongan berhasil ditambahkan! Menunggu aktivasi Ketua RW."
+          editingId ? "Berhasil update loker" : "Berhasil tambah loker"
         );
-        setForm({
-          posisi: "",
-          perusahaan: "",
-          deskripsi: "",
-          gambar_url: "",
-          requirements: "",
-          salary_range: "",
-          lokasi: "",
-          contact_method: "",
-          contact_person: "",
-          deadline: "",
-        });
-        setTimeout(() => router.push("/loker"), 1500);
+        setForm(defaultForm);
+        setEditingId(null);
+        fetchLoker();
       } else {
-        setError(result.message || "Gagal menambah lowongan.");
+        setError(result.message || "Gagal simpan loker");
       }
     } catch {
-      setError("Gagal menambah lowongan.");
+      setError("Gagal simpan loker");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  if (sessionLoading || !session?.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
+  function handleCancelEdit() {
+    setEditingId(null);
+    setForm(defaultForm);
+    setError("");
+    setSuccess("");
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="max-w-xl mx-auto py-12 px-4">
-        <Card>
-          <CardContent>
-            <h2 className="text-2xl font-bold mb-6">Tambah Lowongan Kerja</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* ...form fields seperti sebelumnya... */}
-              <input
-                name="posisi"
-                type="text"
-                required
-                placeholder="Posisi"
-                value={form.posisi}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <input
-                name="perusahaan"
-                type="text"
-                required
-                placeholder="Perusahaan"
-                value={form.perusahaan}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <textarea
-                name="deskripsi"
-                required
-                placeholder="Deskripsi"
-                value={form.deskripsi}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <input
-                name="gambar_url"
-                type="url"
-                required
-                placeholder="URL Gambar"
-                value={form.gambar_url}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <input
-                name="requirements"
-                type="text"
-                required
-                placeholder="Persyaratan"
-                value={form.requirements}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <input
-                name="salary_range"
-                type="text"
-                required
-                placeholder="Rentang Gaji (misal: 2-3 jt)"
-                value={form.salary_range}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <input
-                name="lokasi"
-                type="text"
-                required
-                placeholder="Lokasi"
-                value={form.lokasi}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <select
-                name="contact_method"
-                required
-                value={form.contact_method}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              >
-                <option value="">Metode Kontak</option>
-                <option value="Email">Email</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Telepon">Telepon</option>
-              </select>
-              <input
-                name="contact_person"
-                type="text"
-                required
-                placeholder="Kontak Person (email/no hp)"
-                value={form.contact_person}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <input
-                name="deadline"
-                type="date"
-                required
-                value={form.deadline}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-              <div className="text-sm text-gray-500">
-                Status awal: <b>Tidak Aktif</b> (hanya Ketua RW/Admin yang bisa
-                mengaktifkan)
-              </div>
-              {error && <div className="text-red-600">{error}</div>}
-              {success && <div className="text-green-600">{success}</div>}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2 px-4 bg-emerald-600 text-white rounded hover:bg-emerald-700"
-              >
-                {loading ? "Memproses..." : "Tambah Lowongan"}
-              </button>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
-      <Footer />
-    </>
+    <div className="max-w-6xl mx-auto py-8 px-2">
+      <h2 className="text-2xl font-bold mb-4">
+        {editingId ? "Edit Lowongan" : "Tambah Lowongan Kerja"}
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-2 mb-8">
+        <input
+          name="posisi"
+          value={form.posisi}
+          onChange={handleChange}
+          placeholder="Posisi"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <input
+          name="perusahaan"
+          value={form.perusahaan}
+          onChange={handleChange}
+          placeholder="Perusahaan"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <textarea
+          name="deskripsi"
+          value={form.deskripsi}
+          onChange={handleChange}
+          placeholder="Deskripsi"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <input
+          name="gambar_url"
+          value={form.gambar_url}
+          onChange={handleChange}
+          placeholder="URL Gambar"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <input
+          name="requirements"
+          value={form.requirements}
+          onChange={handleChange}
+          placeholder="Persyaratan"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <input
+          name="salary_range"
+          value={form.salary_range}
+          onChange={handleChange}
+          placeholder="Rentang Gaji"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <input
+          name="lokasi"
+          value={form.lokasi}
+          onChange={handleChange}
+          placeholder="Lokasi"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <select
+          name="contact_method"
+          value={form.contact_method}
+          onChange={handleChange}
+          required
+          className="border px-2 py-1 w-full"
+        >
+          <option value="">Metode Kontak</option>
+          <option value="Email">Email</option>
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Telepon">Telepon</option>
+        </select>
+        <input
+          name="contact_person"
+          value={form.contact_person}
+          onChange={handleChange}
+          placeholder="Kontak Person"
+          required
+          className="border px-2 py-1 w-full"
+        />
+        <input
+          name="deadline"
+          type="date"
+          value={form.deadline}
+          onChange={handleChange}
+          required
+          className="border px-2 py-1 w-full"
+        />
+        {error && <div className="text-red-600">{error}</div>}
+        {success && <div className="text-green-600">{success}</div>}
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            {loading ? "Memproses..." : editingId ? "Update" : "Tambah"}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="bg-gray-400 text-white px-4 py-2 rounded"
+            >
+              Batal
+            </button>
+          )}
+        </div>
+      </form>
+      <h2 className="text-xl font-bold mb-2">Daftar Loker</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-[900px] w-full border text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="p-2 border">Gambar</th>
+              <th className="p-2 border">Posisi</th>
+              <th className="p-2 border">Perusahaan</th>
+              <th className="p-2 border">Deskripsi</th>
+              <th className="p-2 border">Persyaratan</th>
+              <th className="p-2 border">Gaji</th>
+              <th className="p-2 border">Lokasi</th>
+              <th className="p-2 border">Kontak</th>
+              <th className="p-2 border">Deadline</th>
+              <th className="p-2 border">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lokerList.map((loker) => (
+              <tr key={loker.id}>
+                <td className="border p-2">
+                  <Image
+                    width={128}
+                    height={80}
+                    src={loker.gambar_url}
+                    alt={loker.posisi}
+                    className="w-32 h-20 object-cover rounded"
+                    onError={(e) =>
+                      (e.currentTarget.src =
+                        "https://placehold.co/128x80?text=No+Image")
+                    }
+                  />
+                </td>
+                <td className="border p-2">{loker.posisi}</td>
+                <td className="border p-2">{loker.perusahaan}</td>
+                <td className="border p-2">{loker.deskripsi}</td>
+                <td className="border p-2">{loker.requirements}</td>
+                <td className="border p-2">{loker.salary_range}</td>
+                <td className="border p-2">{loker.lokasi}</td>
+                <td className="border p-2">
+                  {loker.contact_method}: {loker.contact_person}
+                </td>
+                <td className="border p-2">{loker.deadline}</td>
+                <td className="border p-2">
+                  <button
+                    className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+                    onClick={() => handleEdit(loker)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="bg-red-600 text-white px-2 py-1 rounded"
+                    onClick={() => handleDelete(loker.id)}
+                  >
+                    Hapus
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {lokerList.length === 0 && (
+              <tr>
+                <td colSpan={10} className="text-center p-4">
+                  Tidak ada data loker.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

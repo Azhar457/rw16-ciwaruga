@@ -52,7 +52,7 @@ export default function AdminDashboard() {
 
   async function checkAuth() {
     try {
-      const res = await fetch("/api/auth/check", {
+      const res = await fetch("/api/auth/login", {
         credentials: "include",
       });
       const json = await res.json();
