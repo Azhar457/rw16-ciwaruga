@@ -56,7 +56,11 @@ export default function AdminDashboard() {
       // Menggunakan endpoint /api/auth/session yang sudah kita buat
       const res = await fetch("/api/auth/session");
       const json = await res.json();
-      if (!res.ok || !json.success || !["admin", "super_admin"].includes(json.user?.role)) {
+      if (
+        !res.ok ||
+        !json.success ||
+        !["admin", "super_admin"].includes(json.user?.role)
+      ) {
         router.push("/auth/login");
         return false;
       }
@@ -73,19 +77,16 @@ export default function AdminDashboard() {
   async function fetchAll() {
     setLoading(true);
     const result: Record<string, any[]> = {};
-
     for (const ep of endpoints) {
       try {
         const res = await fetch(ep.url, {
-          cache: 'no-store' // Mencegah caching data API
+          cache: "no-store", // Mencegah caching data API
           headers: {
             "Cache-Control": "no-cache",
             Pragma: "no-cache",
           },
           credentials: "include",
-          cache: "no-store",
         });
-
         if (!res.ok) {
           const error = await res.json();
           setErrors((prev) => ({
@@ -240,11 +241,15 @@ export default function AdminDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {filteredData[0] && Object.keys(filteredData[0]).map((col) => (
-                      <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {col.replace(/_/g, ' ')}
-                      </th>
-                    ))}
+                    {filteredData[0] &&
+                      Object.keys(filteredData[0]).map((col) => (
+                        <th
+                          key={col}
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {col.replace(/_/g, " ")}
+                        </th>
+                      ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
