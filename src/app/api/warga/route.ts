@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  readGoogleSheet,
-} from "@/lib/googleSheets";
+import { readGoogleSheet } from "@/lib/googleSheets";
 import {
   getSession,
   filterWargaData,
@@ -13,19 +11,28 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession(request);
+    const user = await getSession(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const wargaData = await readGoogleSheet<WargaData>("warga");
-    const filteredData = filterWargaData(session, wargaData);
+    const allWarga = await readGoogleSheet<WargaData>("warga");
 
-    return NextResponse.json(filteredData);
+    if (user.role === "ketua_rw") {
+      const wargaRW = allWarga.filter((w) => w.rw === user.rw_akses);
+      return NextResponse.json(wargaRW);
+    } else if (user.role === "ketua_rt") {
+      const wargaRT = allWarga.filter(
+        (w) => w.rt === user.rt_akses && w.rw === user.rw_akses
+      );
+      return NextResponse.json(wargaRT);
+    } else {
+      return NextResponse.json([], { status: 403 });
+    }
   } catch (error) {
     console.error("Error fetching warga:", error);
     return NextResponse.json(

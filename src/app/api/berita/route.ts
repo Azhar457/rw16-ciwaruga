@@ -74,9 +74,6 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    await writeGoogleSheet("berita", [beritaToAdd]);
-
     return NextResponse.json({
       success: true,
       message: "Berita berhasil ditambahkan",
