@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet, writeGoogleSheet, filterActiveRecords } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 interface BPHData {
@@ -19,8 +19,8 @@ export async function GET() {
   try {
     const bphData = (await readGoogleSheet("bph")) as BPHData[];
 
-    // Filter hanya yang aktif untuk public
-    const activeBPH = bphData.filter((bph) => bph.status_aktif === "aktif");
+    // Menggunakan fungsi filter yang sudah ada dan andal
+    const activeBPH = filterActiveRecords(bphData);
 
     return NextResponse.json(activeBPH);
   } catch (error) {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const newBPH = await request.json();
     const bphData = (await readGoogleSheet("bph")) as BPHData[];
 
-    const maxId = Math.max(...bphData.map((b) => b.id), 0);
+    const maxId = Math.max(0, ...bphData.map((b) => b.id));
     const bphToAdd = {
       ...newBPH,
       id: maxId + 1,
