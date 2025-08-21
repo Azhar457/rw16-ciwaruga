@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
@@ -21,33 +21,12 @@ interface AccountData {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await getSession(request);
-
-    if (!session || !["admin"].includes(session.role)) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 403 }
-      );
-    }
-
-    const accountData = await readGoogleSheet<AccountData>("account");
-
-    const safeAccountData = accountData.map((acc) => ({
-      ...acc,
-      password_hash: "***HIDDEN***",
-    }));
-
-    return NextResponse.json(safeAccountData);
-  } catch (error) {
-    console.error("Error fetching accounts:", error);
-    return NextResponse.json(
-      { success: false, message: "Internal server error" },
-      { status: 500 }
-    );
+  const user = await getSession(request);
+  if (!user) {
+    return NextResponse.json({ user: null }, { status: 200 });
   }
+  return NextResponse.json({ user }, { status: 200 });
 }
-
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
@@ -123,8 +102,6 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: "",
     };
-
-    await writeGoogleSheet("account", [newAccount]);
 
     return NextResponse.json({
       success: true,
