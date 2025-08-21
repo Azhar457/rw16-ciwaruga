@@ -4,6 +4,8 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/Card";
 import LoadingSpinner from "@/components/ui/loadingSpinner";
 import Modal from "@/components/ui/Modal";
+import Navbar from "../../components/ui/Navbar";
+import Footer from "../../components/ui/Footer";
 
 interface LokerData {
   id: number;
@@ -76,18 +78,41 @@ export default function LokerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Lowongan Kerja RW 16 Ciwaruga
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+<>
+    <Navbar />
+    <section className="py-16 bg-gradient-to-r from-emerald-600 to-emerald-200 relative">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h3 className="text-3xl lg:text-4xl font-bold text-white mb-6">
+          Lowongan Kerja RW 16 Ciwaruga
+          </h3>
+          <p className="text-xl text-emerald-100 mb-8">
             Temukan peluang karir terbaik di sekitar lingkungan kita. Berbagai
             posisi dari perusahaan dan UMKM terpercaya.
           </p>
         </div>
+      </section>
+
+      {/* Gelombang Transition */}
+      <svg
+        className="relative block w-full h-24 -mt-16"
+        xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="none"
+        viewBox="0 0 1200 120"
+      >
+        <path
+          d="M321.39 56.44c58.58-10.79 114.15-30.14 
+            172.32-41.86 82.39-16.63 168.19-17.75 
+            250.45-.39 110.38 23.41 221.77 71.48 
+            332.15 66.6 58.49-2.6 113.06-22.64 
+            170.64-39.05V120H0V16.48
+            c92.89 27.18 191.73 55.75 321.39 39.96z"
+          fill="#ffffffff"
+        />
+      </svg>
+    <div className="min-h-screen bg-white py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        
 
         {/* Filters */}
         <div className="mb-8">
@@ -281,5 +306,7 @@ export default function LokerPage() {
         )}
       </div>
     </div>
+    <Footer />
+    </>
   );
 }

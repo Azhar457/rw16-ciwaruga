@@ -26,7 +26,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`${poppins.className} bg-[#004B50] shadow-lg sticky top-0 z-50`}
+      className={`${poppins.className} bg-gradient-to-r from-emerald-600 to-emerald-300 shadow-lg sticky top-0 z-50`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -37,7 +37,7 @@ export default function Navbar() {
               alt="Logo"
               width={32}
               height={32}
-              className="w-8 h-8"
+              className="w-12 h-12"
             />
             <span className="text-xl font-bold text-white">RW16 Ciwaruga</span>
           </Link>
@@ -50,8 +50,8 @@ export default function Navbar() {
                 href={item.href}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   pathname === item.href
-                    ? "text-[#2A9D8F] underline"
-                    : "text-white hover:text-[#2A9D8F]"
+                    ? "text-white border-2 border-white"
+                    : "text-white hover:text-emerald-700"
                 }`}
               >
                 {item.label}
@@ -59,7 +59,7 @@ export default function Navbar() {
             ))}
             <Link
               href="/auth/login"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 ml-2"
+              className="bg-transparent border-2 border-white  text-white px-4 py-2 rounded-lg hover:bg-white ml-2 hover:text-emerald-500"
             >
               Login
             </Link>
@@ -100,7 +100,7 @@ export default function Navbar() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden bg-[#004B50] border-t border-gray-700">
+          <div className="md:hidden bg-transparant">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {navItems.map((item) => (
                 <Link
@@ -108,8 +108,8 @@ export default function Navbar() {
                   href={item.href}
                   className={`block px-3 py-2 rounded-md text-sm font-bold no-underline transition-colors ${
                     pathname === item.href
-                      ? "text-[#2A9D8F] font-bold"
-                      : "text-white hover:text-[#2A9D8F]"
+                      ? "text-white border-2 border-white"
+                      : "text-white hover:text-emerald-700"
                   }`}
                 >
                   {item.label}
@@ -117,7 +117,7 @@ export default function Navbar() {
               ))}
               <Link
                 href="/auth/login"
-                className="block px-3 py-2 bg-blue-600 text-white rounded-lg mt-2"
+                className=" text-center block px-3 py-2 bg-transparent border-2 border-white  text-white px-4 py-2 rounded-lg hover:bg-white ml-2 hover:text-emerald-500 rounded-lg mt-2"
               >
                 Login
               </Link>
@@ -128,3 +128,4 @@ export default function Navbar() {
     </nav>
   );
 }
+
