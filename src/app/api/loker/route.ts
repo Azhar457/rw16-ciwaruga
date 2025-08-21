@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet} from "@/lib/googleSheets";
+import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 interface LokerData {
@@ -46,13 +46,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
-
-    if (
-      !session ||
-      !["ketua_rt", "ketua_rw", "admin", "super_admin"].includes(session.role)
-    ) {
+    // Hanya ketua_rw yang boleh post loker
+    if (!session || session.role !== "ketua_rw") {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        {
+          success: false,
+          message: "Unauthorized: hanya admin RW yang bisa menambah loker",
+        },
         { status: 403 }
       );
     }
@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
     const lokerData = (await readGoogleSheet(
       "loker"
     )) as unknown as LokerData[];
-
     const maxId = Math.max(...lokerData.map((l) => l.id), 0);
     const lokerToAdd = {
       ...newLoker,
@@ -70,9 +69,15 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    // Fungsi writeGoogleSheet saat ini hanya mock, tidak benar-benar menulis ke Google Sheets
+    // Jika ingin benar-benar menulis, gunakan Apps Script atau API khusus
+    await writeGoogleSheet(); // Tidak perlu argumen
+
     return NextResponse.json({
       success: true,
-      message: "Lowongan kerja berhasil ditambahkan",
+      message:
+        "Lowongan kerja berhasil ditambahkan (simulasi, belum masuk sheet)",
       data: lokerToAdd,
     });
   } catch (error) {

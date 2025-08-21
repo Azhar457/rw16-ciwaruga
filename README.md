@@ -6,6 +6,7 @@ Proyek ini dibuat untuk memudahkan publikasi data UMKM, Loker, Berita, Lembaga, 
 ---
 
 ## 🚀 Fitur
+
 - ✅ Publik Page UMKM (lihat + tambah data)
 - ✅ Struktur API terhubung ke Google Sheets
 - ✅ Env-based config (mudah setup lokal)
@@ -14,6 +15,7 @@ Proyek ini dibuat untuk memudahkan publikasi data UMKM, Loker, Berita, Lembaga, 
 ---
 
 ## 📂 Struktur Proyek
+
 ```
 src/
 ┣ app/
@@ -35,27 +37,29 @@ src/
 ## ⚙️ Setup Lokal
 
 ### 1. **Clone repo**
+
 ```bash
 git clone <repo-url>
 cd my-app
 ```
 
 ### 2. **Install dependencies**
+
 ```bash
 npm install --legacy-peer-deps
 ```
 
 ### 3. **Buat file `.env.local` di root project**
+
 ```env
 # API Key Google sudah menambahkan Spreadheet API
-NEXT_PUBLIC_GOOGLE_API_KEY=AIzaSyCKQIPyRk0aBK4egDaSTX4PlsSn-kS6mXE
+NEXT_PUBLIC_GOOGLE_API_KEY=
 # ID Spreadsheet (dari Google Sheets utama RW)
-NEXT_PUBLIC_SHEET_ID=1GBdwAHU9M0VHwwEo9nE76gmkf2sSK6pRdW6ooTOu3k0
+NEXT_PUBLIC_SHEET_ID=
 # Appscript Url
-NEXT_PUBLIC_APP_SCRIPT_URL=https://script.google.com/macros/s/AKfycbztNeZ-ccdgSWIhI2IQEcRTBLtvvfQW6wj8F82haYDDFsc6ESOvS4PjDZP6tdBNuLrtJg/exec
+NEXT_PUBLIC_APP_SCRIPT_URL=
 # URL Google Sheets API
-NEXT_PUBLIC_GOOGLE_SHEETS_API_URL=https://sheets.googleapis.com/v4/spreadsheets
-
+NEXT_PUBLIC_GOOGLE_SHEETS_API_URL=
 # NextAuth (kalau dipake login)
 NEXTAUTH_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 NEXTAUTH_URL=http://localhost:3000
@@ -65,6 +69,7 @@ ENCRYPTION_SECRET=mySuperSecretKey
 ```
 
 ### 4. **Jalankan server**
+
 ```bash
 npm run dev
 ```
@@ -76,6 +81,7 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 ## 🤝 Rules untuk Collaborator
 
 ### **Data Access**
+
 - Semua akses data lewat `lib/googleSheets.ts`
 - Kalau bikin page baru:
   1. Tambah route API di `/app/api/...`
@@ -83,11 +89,13 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 - **Jangan pernah commit `.env.local`** → sudah ada di `.gitignore`
 
 ### **Branching Strategy**
+
 - `feature/<nama_fitur>` → untuk fitur baru
-- `fix/<bug>` → untuk perbaikan bug  
+- `fix/<bug>` → untuk perbaikan bug
 - PR ke `main` dengan deskripsi singkat
 
 ### **Code Style**
+
 - Gunakan TypeScript untuk semua file
 - Format dengan Prettier (jika sudah disetup)
 - Interface/Type untuk semua data structure
@@ -96,12 +104,13 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 
 ## 📋 API Endpoints
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| `GET` | `/api/umkm` | Ambil semua data UMKM |
+| Method | Endpoint    | Deskripsi             |
+| ------ | ----------- | --------------------- |
+| `GET`  | `/api/umkm` | Ambil semua data UMKM |
 | `POST` | `/api/umkm` | Tambah data UMKM baru |
 
 **Example Response:**
+
 ```json
 {
   "success": true,
@@ -124,7 +133,7 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 ## 📝 Next Steps
 
 - [ ] Tambah Login Admin (NextAuth)
-- [ ] Role-based akses (Admin RW)  
+- [ ] Role-based akses (Admin RW)
 - [ ] Upload Foto (Google Drive/Firebase)
 - [ ] Deploy ke Vercel
 - [ ] Page untuk Loker, Berita, Lembaga, BPH
@@ -145,7 +154,7 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 ## 📌 Catatan Developer
 
 > **Project ini masih tahap awal (MVP)** → fokus dulu di page publik agar data bisa dilihat masyarakat.
-> 
+>
 > Setelah semua publik page stabil, baru lanjut ke fitur admin & manajemen data.
 
 ---
@@ -153,11 +162,13 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 ## 🐛 Troubleshooting
 
 ### Error "Missing Google Sheets env variables"
+
 - Pastikan file `.env.local` sudah dibuat
 - Restart development server (`Ctrl+C` lalu `npm run dev`)
 - Clear Next.js cache: `rmdir /s .next` (Windows)
 
-### Error "umkm.map is not a function"  
+### Error "umkm.map is not a function"
+
 - Periksa struktur response dari API
 - Pastikan `result.data` adalah array
 
