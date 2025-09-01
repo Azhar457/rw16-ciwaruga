@@ -4,20 +4,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await getSession(request);
-
-    if (!session) {
-      return NextResponse.json({ success: false, message: "Unauthorized", user: null }, { status: 401 });
-    }
-
-    // Mengembalikan data sesi jika pengguna sudah login
-    return NextResponse.json({ success: true, user: session });
-  } catch (error) {
-    console.error("Session check error:", error);
-    return NextResponse.json(
-      { success: false, message: "Internal server error", user: null },
-      { status: 500 }
-    );
+  const user = await getSession(request);
+  if (!user) {
+    return NextResponse.json({ user: null }, { status: 200 });
   }
+  return NextResponse.json({ user }, { status: 200 });
+}
+export async function DELETE() {
+  return NextResponse.json(
+    { success: true },
+    {
+      status: 200,
+      headers: {
+        "Set-Cookie":
+          "session_token=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      },
+    }
+  );
 }

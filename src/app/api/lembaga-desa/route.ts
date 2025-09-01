@@ -3,6 +3,7 @@ import { readGoogleSheet, writeGoogleSheet, filterActiveRecords } from "@/lib/go
 import { getSession } from "@/lib/auth";
 
 interface LembagaData {
+  [key: string]: unknown;
   id: number;
   nama_lembaga: string;
   ketua: string;
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
     };
 
-    await writeGoogleSheet("lembaga_desa", [lembagaToAdd]);
+    await writeGoogleSheet("lembaga_desa", lembagaToAdd);
 
     return NextResponse.json({
       success: true,

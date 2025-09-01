@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
 import Navbar from "../../components/ui/Navbar";
 import Footer from "../../components/ui/Footer";
 import PendudukChart from "../../components/infografis/PendudukChart";
@@ -13,18 +12,17 @@ export default function Infografis() {
   const [activeTab, setActiveTab] = useState("penduduk");
 
   const tabs = [
-    { id: "penduduk", name: "Data Penduduk", icon: "👥" },
-    { id: "apbrw", name: "APBRW", icon: "💰" },
-    { id: "stunting", name: "Stunting", icon: "📊" },
-    { id: "bansos", name: "Bantuan Sosial", icon: "🎁" },
-    { id: "sdgs", name: "SDGs", icon: "🎯" },
+    { id: "penduduk", name: "Data Penduduk", icon: "則" },
+    { id: "apbrw", name: "APBRW", icon: "腸" },
+    { id: "stunting", name: "Stunting", icon: "投" },
+    { id: "bansos", name: "Bantuan Sosial", icon: "氏" },
+    { id: "sdgs", name: "SDGs", icon: "識" },
   ];
 
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-gray-50">
-        {/* Header Section - Using same colors as Berita */}
         <section className="py-12 bg-emerald-500 text-white">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center">
@@ -45,7 +43,6 @@ export default function Infografis() {
           </div>
         </section>
 
-        {/* Tab Navigation */}
         <section className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-wrap gap-2 py-4">
@@ -67,29 +64,6 @@ export default function Infografis() {
           </div>
         </section>
 
-        {/* Quick Actions
-        <section className="py-6 bg-white">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex flex-wrap gap-4">
-              <button
-                onClick={() => setActiveTab("penduduk")}
-                className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
-              >
-                <span className="mr-2">👥</span>
-                Lihat Data Penduduk
-              </button>
-              <button
-                onClick={() => setActiveTab("apbrw")}
-                className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
-              >
-                <span className="mr-2">💰</span>
-                Lihat Anggaran RW
-              </button>
-            </div>
-          </div>
-        </section> */}
-
-        {/* Tab Content */}
         <section className="py-8">
           <div className="max-w-7xl mx-auto px-6">
             <div className="bg-white rounded-lg shadow-lg p-6">
