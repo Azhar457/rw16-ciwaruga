@@ -12,7 +12,10 @@ import {
   FaUserShield,
   FaHistory,
 } from "react-icons/fa";
+import Button from "@/components/ui/Button";
+import LoadingSpinner from "@/components/ui/loadingSpinner";
 import { SessionUser } from "@/lib/auth";
+
 // Define types for the data fetched from the API
 interface DashboardData {
   [key: string]: any[];
@@ -53,6 +56,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [session, setSession] = useState<SessionUser | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function checkAuth() {
     try {
@@ -82,7 +86,7 @@ export default function AdminDashboard() {
         fetchAll();
       }
     });
-  }, [checkAuth]);
+  }, [router]);
 
   async function fetchAll() {
     setLoading(true);
@@ -128,6 +132,24 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 
+  async function handleLogout() {
+    setIsLoggingOut(true);
+    try {
+      const res = await fetch("/api/auth/login", { method: "DELETE" });
+
+      if (res.ok) {
+        router.push("/auth/login");
+      } else {
+        alert("Logout gagal, silakan coba lagi.");
+      }
+    } catch (error) {
+      console.error("An error occurred during logout:", error);
+      alert("Terjadi kesalahan, silakan coba lagi.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   const filteredData =
     data[activeTab]?.filter((row) =>
       Object.values(row).some((val) =>
@@ -162,6 +184,15 @@ export default function AdminDashboard() {
             <div className="text-right text-white">
               <p className="font-medium">{session.nama_lengkap}</p>
               <p className="text-sm text-emerald-100">{session.role}</p>
+              <Button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                variant="destructive"
+                size="sm"
+                className="mt-2"
+              >
+                {isLoggingOut ? <LoadingSpinner size="sm" /> : "Logout"}
+              </Button>
             </div>
           </div>
         </div>
