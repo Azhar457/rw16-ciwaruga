@@ -83,7 +83,7 @@ export default function DashboardPage() {
           </p>
           <button
             onClick={async () => {
-              await fetch("/api/account/session", { method: "DELETE" });
+              await fetch("/api/auth/session", { method: "DELETE" });
               router.replace("/auth/login");
             }}
             className="absolute top-6 right-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
