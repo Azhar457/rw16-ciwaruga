@@ -2,28 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import {
   getSession,
-  filterWargaData,
   canCreateWarga,
   canUpdateWarga,
   WargaData,
   SessionUser,
+  filterWargaData, // Import fungsi filterWargaData
 } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession(request);
+    const user = await getSession(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
 
+    // PERBAIKAN: Menggunakan satu sumber logika yang benar untuk mengambil dan memfilter data
     const allWargaData = await readGoogleSheet<WargaData>("warga");
-    const filteredData = filterWargaData(session, allWargaData);
+    const filteredData = filterWargaData(user, allWargaData);
 
     return NextResponse.json(filteredData);
+
   } catch (error) {
     console.error("Error fetching warga data:", error);
     return NextResponse.json(
