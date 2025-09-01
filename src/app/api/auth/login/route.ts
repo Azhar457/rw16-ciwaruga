@@ -65,8 +65,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Cek subscription (kecuali admin)
-    if (user.role !== "admin" && user.subscription_status !== "active") {
+    // Cek subscription (kecuali role yang mengandung "admin")
+    if (
+      !user.role.toLowerCase().includes("admin") &&
+      user.subscription_status !== "active"
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -77,7 +80,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-
     // Verifikasi password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 

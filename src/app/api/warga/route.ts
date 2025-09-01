@@ -6,6 +6,11 @@ import {
   canUpdateWarga,
   WargaData,
   SessionUser,
+<<<<<<< HEAD
+  filterWargaData,
+=======
+  filterWargaData, // Import fungsi filterWargaData
+>>>>>>> aefd614ca8528762df452175388e2b47b853aa10
 } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -18,20 +23,35 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+<<<<<<< HEAD
     const allWargaData = await readGoogleSheet<WargaData>("warga");
-    const filteredData = filterWargaData(session, allWargaData);
+    const filteredData = filterWargaData(user, allWargaData);
+=======
+<<<<<<< HEAD
+>>>>>>> aefd614ca8528762df452175388e2b47b853aa10
 
+    // PERBAIKAN: Menggunakan satu sumber logika yang benar untuk mengambil dan memfilter data
+=======
+>>>>>>> 854a5f72b8b1ee96ac6075f81f3b2c65dbe5ab6d
+    const allWargaData = await readGoogleSheet<WargaData>("warga");
+    const filteredData = filterWargaData(user, allWargaData);
+
+<<<<<<< HEAD
+    return NextResponse.json(filteredData);
+
+=======
     if (user.role === "ketua_rw") {
-      const wargaRW = allWarga.filter((w) => w.rw === user.rw_akses);
+      const wargaRW = filteredData.filter((w) => w.rw === user.rw_akses);
       return NextResponse.json(wargaRW);
     } else if (user.role === "ketua_rt") {
-      const wargaRT = allWarga.filter(
+      const wargaRT = filteredData.filter(
         (w) => w.rt === user.rt_akses && w.rw === user.rw_akses
       );
       return NextResponse.json(wargaRT);
     } else {
       return NextResponse.json([], { status: 403 });
     }
+>>>>>>> 854a5f72b8b1ee96ac6075f81f3b2c65dbe5ab6d
   } catch (error) {
     console.error("Error fetching warga data:", error);
     return NextResponse.json(
@@ -69,7 +89,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    
+
     // Logika untuk menulis ke Google Sheet (perlu diimplementasikan jika ingin berfungsi)
     // await writeGoogleSheet("warga", [wargaToAdd]);
 
@@ -112,10 +132,10 @@ export async function PUT(request: NextRequest) {
 
       return NextResponse.json({ success: false, message }, { status: 403 });
     }
-    
+
     // Logika untuk update data (perlu diimplementasikan)
     console.log(`Updating warga ID ${id} with data:`, updateData);
-    
+
     return NextResponse.json({
       success: true,
       message:

@@ -1,34 +1,42 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSession } from "./src/lib/auth";
 
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+const unprotectedRoutes = ["/auth/login", "/"];
 
-  // Security headers
-  response.headers.set(
-    "X-Robots-Tag",
-    "noindex, nofollow, nosnippet, noarchive"
-  );
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+// Objek untuk memetakan peran (role) ke jalur dashboard yang sesuai
+const roleRedirects = {
+  super_admin: "/dashboard/admin",
+  admin: "/dashboard/admin",
+  rw: "/dashboard/rw",
+  rt: "/dashboard/rt",
+  user: "/dashboard",
+};
 
-  // Rate limiting headers (informational)
-  response.headers.set("X-RateLimit-Limit", "100");
-  response.headers.set("X-RateLimit-Window", "3600");
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const session = await getSession(request);
+  const isProtected = !unprotectedRoutes.includes(pathname);
 
-  return response;
+  // Jika pengguna mencoba mengakses halaman login dan sudah terotentikasi,
+  // arahkan ke dashboard yang sesuai dengan peran mereka.
+  if (session && pathname.startsWith("/auth/login")) {
+    const dashboardPath =
+      roleRedirects[session.user.role as keyof typeof roleRedirects] ||
+      "/dashboard";
+    return NextResponse.redirect(new URL(dashboardPath, request.url));
+  }
+
+  // Jika pengguna mencoba mengakses halaman terproteksi dan tidak terotentikasi,
+  // arahkan ke halaman login.
+  if (isProtected && !session) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+
+  return NextResponse.next();
 }
 
+// Konfigurasi matcher untuk menentukan rute mana yang akan diproses oleh middleware
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -57,6 +56,35 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    async function checkSession() {
+      const res = await fetch("/api/auth/session");
+      const json = await res.json();
+      // Ganti "developer" dengan role kamu di sheet
+      if (!json.user || json.user.role !== "developer") {
+        // Redirect ke dashboard sesuai role
+        switch (json.user?.role) {
+          case "admin":
+          case "super_admin":
+            router.replace("/dashboard/admin");
+            break;
+          case "ketua_rw":
+            router.replace("/dashboard/rw");
+            break;
+          case "ketua_rt":
+            router.replace("/dashboard/rt");
+            break;
+          case "warga":
+            router.replace("/dashboard/warga");
+            break;
+          default:
+            router.replace("/auth/login");
+        }
+      }
+    }
+    checkSession();
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
