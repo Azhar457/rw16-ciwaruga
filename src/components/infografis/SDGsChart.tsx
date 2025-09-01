@@ -1,20 +1,9 @@
 "use client";
 import { useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 
 export default function SDGsChart() {
   const [selectedGoal, setSelectedGoal] = useState("all");
 
-  // Data dummy SDGs
   const sdgsData = {
     totalGoals: 17,
     achievedGoals: 11,
@@ -260,7 +249,9 @@ export default function SDGsChart() {
 
       {/* SDGs Grid */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4 text-emerald-600">Progress 17 Tujuan SDGs</h4>
+        <h4 className="text-lg font-semibold mb-4 text-emerald-600">
+          Progress 17 Tujuan SDGs
+        </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sdgsData.goals.map((goal) => (
             <div
@@ -272,7 +263,9 @@ export default function SDGsChart() {
                   <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
                     {goal.id}
                   </div>
-                  <span className="text-sm font-medium text-emerald-600">{goal.title}</span>
+                  <span className="text-sm font-medium text-emerald-600">
+                    {goal.title}
+                  </span>
                 </div>
                 <span
                   className={`w-3 h-3 rounded-full ${getStatusColor(
@@ -303,7 +296,9 @@ export default function SDGsChart() {
 
       {/* Initiatives */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h4 className="text-lg font-semibold mb-4 text-emerald-600">Inisiatif & Program SDGs</h4>
+        <h4 className="text-lg font-semibold mb-4 text-emerald-600">
+          Inisiatif & Program SDGs
+        </h4>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {sdgsData.initiatives.map((initiative, index) => (
             <div
@@ -311,7 +306,9 @@ export default function SDGsChart() {
               className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow"
             >
               <div className="flex justify-between items-start mb-3">
-                <h5 className="font-medium text-emerald-600">{initiative.title}</h5>
+                <h5 className="font-medium text-emerald-600">
+                  {initiative.title}
+                </h5>
                 <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                   {initiative.status === "active" ? "Aktif" : "Tidak Aktif"}
                 </span>

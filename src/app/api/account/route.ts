@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       updated_at: "",
     };
 
-    await writeGoogleSheet("account", [newAccount]);
+    await writeGoogleSheet("account", newAccount);
 
     return NextResponse.json({
       success: true,

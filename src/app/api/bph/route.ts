@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet, filterActiveRecords } from "@/lib/googleSheets";
+import {
+  readGoogleSheet,
+  writeGoogleSheet,
+  filterActiveRecords,
+} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 interface BPHData {
+  [key: string]: unknown;
   id: number;
   nama: string;
   jabatan: string;
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
     };
 
-    await writeGoogleSheet("bph", [bphToAdd]);
+    await writeGoogleSheet("bph", bphToAdd);
 
     return NextResponse.json({
       success: true,

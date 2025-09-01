@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const subscriptionData = (await readGoogleSheet(
-        "subscriptions"
+      "subscriptions"
     )) as unknown as SubscriptionData[];
 
     return NextResponse.json(subscriptionData);
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const newSubscription = await request.json();
     const subscriptionData = (await readGoogleSheet(
-        "subscriptions"
+      "subscriptions"
     )) as unknown as SubscriptionData[];
 
     // Check if RW already exists
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    await writeGoogleSheet("subscriptions", [subscriptionToAdd]);
+    await writeGoogleSheet("subscriptions", subscriptionToAdd);
 
     return NextResponse.json({
       success: true,
@@ -123,7 +123,11 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    await updateGoogleSheet("subscriptions", id, dataToUpdate);
+    await updateGoogleSheet({
+      sheetName: "subscriptions",
+      id,
+      data: dataToUpdate,
+    });
 
     return NextResponse.json({
       success: true,

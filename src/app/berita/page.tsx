@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Navbar from "../../components/ui/Navbar";
 import Footer from "../../components/ui/Footer";
-import Image from "next/image";
-import Link from "next/link";
 
 interface BeritaArtikel {
   id: number;
@@ -27,7 +26,8 @@ export default function BeritaPage() {
       id: 1,
       category: "Pemerintahan",
       title: "Penyaluran BLT Dana Desa 2025",
-      description: "Desa Ciwaruga aktif dalam menjalankan program BLT Dana Desa...",
+      description:
+        "Desa Ciwaruga aktif dalam menjalankan program BLT Dana Desa...",
       image: "/bgg.jpg",
       author: "Administrator",
       views: 76,
@@ -47,7 +47,8 @@ export default function BeritaPage() {
       id: 3,
       category: "Infrastruktur",
       title: "Pengecoran Jalan Kabupaten",
-      description: "Pemerintah Desa bersama Kabupaten Bandung Barat melaksanakan...",
+      description:
+        "Pemerintah Desa bersama Kabupaten Bandung Barat melaksanakan...",
       image: "/desa4.jpeg",
       author: "Administrator",
       views: 43,
@@ -57,7 +58,8 @@ export default function BeritaPage() {
       id: 4,
       category: "Kunjungan Kerja",
       title: "Peninjauan Langsung oleh Dewan Komisi 3",
-      description: "Komisi 3 DPRD Kabupaten Bandung Barat meninjau progres perbaikan...",
+      description:
+        "Komisi 3 DPRD Kabupaten Bandung Barat meninjau progres perbaikan...",
       image: "/desa3.jpeg",
       author: "Administrator",
       views: 55,
@@ -67,7 +69,8 @@ export default function BeritaPage() {
       id: 5,
       category: "Pembinaan",
       title: "Pembinaan RT, RW, dan Linmas",
-      description: "Pembinaan bagi Ketua RT, RW, dan Linmas di Desa Ciwaruga...",
+      description:
+        "Pembinaan bagi Ketua RT, RW, dan Linmas di Desa Ciwaruga...",
       image: "/desa5.jpeg",
       author: "Administrator",
       views: 46,
@@ -117,38 +120,37 @@ export default function BeritaPage() {
     <>
       <Navbar />
       <section className="py-16 bg-gradient-to-r from-emerald-600 to-emerald-200 relative">
-  <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-    <h3 className="text-3xl lg:text-4xl font-bold text-white mb-6">
-      Berita Terbaru Desa Ciwaruga
-    </h3>
-    <p className="text-xl text-emerald-100 mb-8">
-      Informasi terbaru seputar Desa Ciwaruga
-    </p>
-  </div>
-</section>
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h3 className="text-3xl lg:text-4xl font-bold text-white mb-6">
+            Berita Terbaru Desa Ciwaruga
+          </h3>
+          <p className="text-xl text-emerald-100 mb-8">
+            Informasi terbaru seputar Desa Ciwaruga
+          </p>
+        </div>
+      </section>
 
-{/* Gelombang Transition */}
-<svg
-  className="relative block w-full h-16 -mt-15"
-  xmlns="http://www.w3.org/2000/svg"
-  preserveAspectRatio="none"
-  viewBox="0 0 1200 120"
->
-  <path
-    d="M321.39 56.44c58.58-10.79 114.15-30.14 
+      {/* Gelombang Transition */}
+      <svg
+        className="relative block w-full h-16 -mt-15"
+        xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="none"
+        viewBox="0 0 1200 120"
+      >
+        <path
+          d="M321.39 56.44c58.58-10.79 114.15-30.14 
       172.32-41.86 82.39-16.63 168.19-17.75 
       250.45-.39 110.38 23.41 221.77 71.48 
       332.15 66.6 58.49-2.6 113.06-22.64 
       170.64-39.05V120H0V16.48
       c92.89 27.18 191.73 55.75 321.39 39.96z"
-    fill="#ffffffff" // warna putih transisi ke background section berikutnya
-  />
-</svg>
+          fill="#ffffffff"
+        />
+      </svg>
 
-      
       <div className="min-h-screen bg-white">
         {/* Section Header */}
-    
+
         {/* Grid Berita */}
         <div className="container mx-auto px-6 pb-12 pt-25 pb-25">
           {loading ? (
@@ -173,13 +175,15 @@ export default function BeritaPage() {
                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                       <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">
                         {item.category}
-                      </span> 
+                      </span>
                       <span>{item.date}</span>
                     </div>
                     <h3 className="text-lg font-bold text-emerald-500 mb-2 hover:text-emerald-600 cursor-pointer">
                       {item.title}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-4">{item.description}</p>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {item.description}
+                    </p>
                     <div className="flex justify-between text-xs text-gray-500 border-t pt-3">
                       <span>✍ {item.author}</span>
                       <span>👁 {item.views}x</span>
