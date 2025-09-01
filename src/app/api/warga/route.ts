@@ -6,7 +6,11 @@ import {
   canUpdateWarga,
   WargaData,
   SessionUser,
+<<<<<<< HEAD
   filterWargaData,
+=======
+  filterWargaData, // Import fungsi filterWargaData
+>>>>>>> aefd614ca8528762df452175388e2b47b853aa10
 } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -19,9 +23,23 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+<<<<<<< HEAD
+    const allWargaData = await readGoogleSheet<WargaData>("warga");
+    const filteredData = filterWargaData(user, allWargaData);
+=======
+<<<<<<< HEAD
+>>>>>>> aefd614ca8528762df452175388e2b47b853aa10
+
+    // PERBAIKAN: Menggunakan satu sumber logika yang benar untuk mengambil dan memfilter data
+=======
+>>>>>>> 854a5f72b8b1ee96ac6075f81f3b2c65dbe5ab6d
     const allWargaData = await readGoogleSheet<WargaData>("warga");
     const filteredData = filterWargaData(user, allWargaData);
 
+<<<<<<< HEAD
+    return NextResponse.json(filteredData);
+
+=======
     if (user.role === "ketua_rw") {
       const wargaRW = filteredData.filter((w) => w.rw === user.rw_akses);
       return NextResponse.json(wargaRW);
@@ -33,6 +51,7 @@ export async function GET(request: NextRequest) {
     } else {
       return NextResponse.json([], { status: 403 });
     }
+>>>>>>> 854a5f72b8b1ee96ac6075f81f3b2c65dbe5ab6d
   } catch (error) {
     console.error("Error fetching warga data:", error);
     return NextResponse.json(

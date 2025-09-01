@@ -104,10 +104,12 @@ export function filterWargaData(user: SessionUser, wargaData: WargaData[]): Part
 
   // Filter data berdasarkan role
   if (user.role === "admin_rw" || user.role === "ketua_rw") {
-    filteredData = wargaData.filter(w => w.rw === user.rw_akses);
+    // PERBAIKAN: Menggunakan String() untuk memastikan perbandingan tipe data yang konsisten
+    filteredData = wargaData.filter(w => String(w.rw) === String(user.rw_akses));
   } else if (user.role === "admin_rt" || user.role === "ketua_rt") {
+    // PERBAIKAN: Menggunakan String() untuk memastikan perbandingan tipe data yang konsisten
     filteredData = wargaData.filter(
-      w => w.rt === user.rt_akses && w.rw === user.rw_akses
+      w => String(w.rt) === String(user.rt_akses) && String(w.rw) === String(user.rw_akses)
     );
   } else if (user.role === "admin_lembaga") {
     return [];
@@ -122,6 +124,7 @@ export function filterWargaData(user: SessionUser, wargaData: WargaData[]): Part
     no_hp: canViewHP ? warga.no_hp : "***HIDDEN***",
   }));
 }
+
 
 /**
  * Memeriksa apakah pengguna boleh membuat data warga baru.
