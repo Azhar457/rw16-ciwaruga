@@ -6,6 +6,7 @@ import {
   canUpdateWarga,
   WargaData,
   SessionUser,
+  filterWargaData,
 } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
