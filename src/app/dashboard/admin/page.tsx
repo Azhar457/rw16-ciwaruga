@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaUsers, FaStore, FaNewspaper, FaBriefcase, FaBuilding, FaUserTie, FaUserShield, FaHistory } from "react-icons/fa";
+import Button from "@/components/ui/Button"; // <-- Import Button component
+import LoadingSpinner from "@/components/ui/loadingSpinner"; // <-- Import LoadingSpinner
 
 // Daftar endpoint API untuk mengambil data
 const endpoints = [
@@ -23,6 +25,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [session, setSession] = useState<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // <-- State untuk proses logout
 
   useEffect(() => {
     checkAuth().then((isAuth) => {
@@ -34,7 +37,6 @@ export default function AdminDashboard() {
 
   async function checkAuth() {
     try {
-      // Menggunakan endpoint /api/auth/session yang sudah kita buat
       const res = await fetch("/api/auth/session");
       const json = await res.json();
       
@@ -58,24 +60,17 @@ export default function AdminDashboard() {
     
     for (const ep of endpoints) {
       try {
-        const res = await fetch(ep.url, {
-          cache: 'no-store' // Mencegah caching data API
-        });
+        const res = await fetch(ep.url, { cache: 'no-store' });
         
         if (!res.ok) {
           const error = await res.json();
-          setErrors(prev => ({
-            ...prev,
-            [ep.key]: error.message || `Error fetching ${ep.label}`
-          }));
+          setErrors(prev => ({ ...prev, [ep.key]: error.message || `Error fetching ${ep.label}` }));
           continue;
         }
         
         const json = await res.json();
-        // Menangani respons yang mungkin berupa { data: [...] } atau [...]
         result[ep.key] = Array.isArray(json) ? json : json.data || [];
         
-        // Clear error jika sukses
         setErrors(prev => {
           const newErrors = {...prev};
           delete newErrors[ep.key];
@@ -83,10 +78,7 @@ export default function AdminDashboard() {
         });
       } catch (error) {
         console.error(`Error fetching ${ep.url}:`, error);
-        setErrors(prev => ({
-          ...prev,
-          [ep.key]: `Failed to load ${ep.label}`
-        }));
+        setErrors(prev => ({ ...prev, [ep.key]: `Failed to load ${ep.label}` }));
         result[ep.key] = [];
       }
     }
@@ -95,7 +87,25 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 
-  // Filter data berdasarkan search
+  // --- FUNGSI BARU UNTUK LOGOUT ---
+  async function handleLogout() {
+    setIsLoggingOut(true);
+    try {
+      const res = await fetch('/api/auth/login', { method: 'DELETE' });
+
+      if (res.ok) {
+        router.push('/auth/login');
+      } else {
+        alert('Logout gagal, silakan coba lagi.');
+      }
+    } catch (error) {
+      console.error('An error occurred during logout:', error);
+      alert('Terjadi kesalahan, silakan coba lagi.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
   const filteredData = data[activeTab]?.filter(row => 
     Object.values(row).some(val => 
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
@@ -116,21 +126,30 @@ export default function AdminDashboard() {
   return (
     <main className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-lg p-6 mb-8 shadow-lg">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">Dashboard Admin</h1>
               <p className="text-emerald-50">Kelola user, log, sistem keamanan & seluruh data</p>
             </div>
+            {/* --- PENAMBAHAN TOMBOL LOGOUT DI SINI --- */}
             <div className="text-right text-white">
               <p className="font-medium">{session.nama_lengkap}</p>
               <p className="text-sm text-emerald-100">{session.role}</p>
+              <Button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                variant="destructive"
+                size="sm"
+                className="mt-2"
+              >
+                {isLoggingOut ? <LoadingSpinner size="sm" /> : 'Logout'}
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Statistics Cards */}
+        {/* ... sisa kode tidak berubah ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {endpoints.map(ep => (
             <div key={ep.key} 
@@ -154,7 +173,6 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Content Area */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-800">
@@ -174,14 +192,12 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Error Message */}
           {errors[activeTab] && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
               ⚠️ {errors[activeTab]}
             </div>
           )}
 
-          {/* Data Table */}
           {loading ? (
             <div className="py-20 text-center">
               <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
