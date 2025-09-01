@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import {
+  readGoogleSheet,
+  writeGoogleSheet,
+  updateGoogleSheet,
+} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
@@ -17,14 +21,16 @@ interface AccountData {
   subscription_end: string;
   created_at: string;
   updated_at: string;
-  [key: string]: string | number;
+  verified_by?: string;
+  [key: string]: string | number | undefined;
 }
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    // Hanya developer yang boleh akses
+    if (!session || session.role !== "developer") {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -52,7 +58,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || session.role !== "developer") {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -72,12 +78,15 @@ export async function POST(request: NextRequest) {
     }
 
     const allowedRoles = [
+      "admin",
+      "super_admin",
       "admin_rt",
       "admin_rw",
       "ketua_rt",
       "ketua_rw",
       "admin_lembaga",
-      "admin",
+      "warga",
+      "developer",
     ];
     if (!allowedRoles.includes(role)) {
       return NextResponse.json(
@@ -122,6 +131,7 @@ export async function POST(request: NextRequest) {
         .split("T")[0],
       created_at: new Date().toISOString(),
       updated_at: "",
+      verified_by: session.email,
     };
 
     await writeGoogleSheet("account", newAccount);
@@ -144,7 +154,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || session.role !== "developer") {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -169,9 +179,12 @@ export async function PUT(request: NextRequest) {
 
     dataToUpdate.updated_at = new Date().toISOString();
 
-    // Logika untuk update ke Google Sheets belum ada, tapi respons sukses dikembalikan
-    console.log("Data to update:", id, dataToUpdate);
-    // await updateGoogleSheet("account", id, dataToUpdate); // Fungsi ini perlu diimplementasikan
+    // Update data di Google Sheets
+    await updateGoogleSheet({
+      sheetName: "account",
+      id,
+      data: dataToUpdate,
+    });
 
     return NextResponse.json({
       success: true,
@@ -179,6 +192,44 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error updating account:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getSession(request);
+
+    if (!session || session.role !== "developer") {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await request.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await writeGoogleSheet("account", {
+      action: "delete",
+      id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Account berhasil dihapus",
+    });
+  } catch (error) {
+    console.error("Error deleting account:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

@@ -12,7 +12,7 @@ async function getServerSession(): Promise<SessionUser | null> {
     if (!sessionCookie) return null;
     try {
         const sessionData = await decrypt(sessionCookie);
-        return sessionData as SessionUser;
+        return sessionData as unknown as SessionUser;
     } catch (error) {
         return null;
     }

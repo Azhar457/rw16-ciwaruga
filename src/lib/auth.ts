@@ -3,6 +3,7 @@ import { decrypt, SessionData } from "@/lib/encrypt";
 
 // Tipe data untuk sesi pengguna setelah login
 export interface SessionUser {
+  user: any;
   id: number;
   email: string;
   role: string;
@@ -71,7 +72,7 @@ export async function getSession(request: NextRequest): Promise<SessionUser | nu
       return null; 
     }
 
-    return sessionData as SessionUser;
+    return sessionData as unknown as SessionUser;
   } catch (error) {
     console.error("Get session error:", error);
     return null;

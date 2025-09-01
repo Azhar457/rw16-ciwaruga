@@ -6,6 +6,7 @@ import {
   canUpdateWarga,
   WargaData,
   SessionUser,
+  filterWargaData,
 } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -19,13 +20,13 @@ export async function GET(request: NextRequest) {
       );
     }
     const allWargaData = await readGoogleSheet<WargaData>("warga");
-    const filteredData = filterWargaData(session, allWargaData);
+    const filteredData = filterWargaData(user, allWargaData);
 
     if (user.role === "ketua_rw") {
-      const wargaRW = allWarga.filter((w) => w.rw === user.rw_akses);
+      const wargaRW = filteredData.filter((w) => w.rw === user.rw_akses);
       return NextResponse.json(wargaRW);
     } else if (user.role === "ketua_rt") {
-      const wargaRT = allWarga.filter(
+      const wargaRT = filteredData.filter(
         (w) => w.rt === user.rt_akses && w.rw === user.rw_akses
       );
       return NextResponse.json(wargaRT);
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    
+
     // Logika untuk menulis ke Google Sheet (perlu diimplementasikan jika ingin berfungsi)
     // await writeGoogleSheet("warga", [wargaToAdd]);
 
@@ -112,10 +113,10 @@ export async function PUT(request: NextRequest) {
 
       return NextResponse.json({ success: false, message }, { status: 403 });
     }
-    
+
     // Logika untuk update data (perlu diimplementasikan)
     console.log(`Updating warga ID ${id} with data:`, updateData);
-    
+
     return NextResponse.json({
       success: true,
       message:
