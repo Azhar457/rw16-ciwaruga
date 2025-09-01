@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 
 const SHEET_ID = process.env.SHEET_ID;
@@ -74,6 +75,17 @@ function processGoogleSheetsResponse<T = SheetRow>(
 export async function readGoogleSheet<T = SheetRow>(
   sheetName: string
 ): Promise<T[]> {
+  const now = Date.now();
+  const cacheKey = sheetName;
+
+  // Cek cache
+  if (
+    sheetCache[cacheKey] &&
+    now - sheetCache[cacheKey].timestamp < CACHE_DURATION
+  ) {
+    return sheetCache[cacheKey].data;
+  }
+
   try {
     if (!SHEET_ID || !API_KEY) {
       console.error("Missing Google Sheets configuration");
@@ -83,9 +95,6 @@ export async function readGoogleSheet<T = SheetRow>(
     const range = `${sheetName}!A:Z`;
     const encodedRange = encodeURIComponent(range);
     const url = `${BASE_URL}/${SHEET_ID}/values/${encodedRange}`;
-
-    console.log(`Fetching data from: ${sheetName}`);
-
     const response = await axios.get<GoogleSheetsResponse>(url, {
       params: {
         key: API_KEY,
@@ -104,54 +113,15 @@ export async function readGoogleSheet<T = SheetRow>(
       return [];
     }
 
-    const values = response.data.values || [];
-    console.log(`Fetched ${values.length} rows from ${sheetName}`);
+    const rows: T[] = processGoogleSheetsResponse<T>(response.data);
 
-    if (values.length === 0) {
-      console.log(`No data found in sheet: ${sheetName}`);
-      return [];
-    }
+    // Simpan ke cache
+    sheetCache[cacheKey] = {
+      data: rows,
+      timestamp: now,
+    };
 
-    // Headers adalah baris pertama
-    const headers = values[0];
-    const rows = values.slice(1);
-
-    // Convert ke array of objects
-    const result = rows.map((row: string[]) => {
-      const obj: Record<string, string | number> = {};
-
-      headers.forEach((header: string, headerIndex: number) => {
-        const value = row[headerIndex] || "";
-
-        // Convert numbers jika memungkinkan
-        if (
-          !isNaN(Number(value)) &&
-          value !== "" &&
-          value !== null &&
-          typeof value === "string"
-        ) {
-          // Check if it looks like a number (not starting with 0 unless it's just "0")
-          if (
-            value === "0" ||
-            (!value.startsWith("0") &&
-              !value.includes("-") &&
-              !value.includes("+") &&
-              !value.includes("e"))
-          ) {
-            obj[header] = Number(value);
-          } else {
-            obj[header] = value;
-          }
-        } else {
-          obj[header] = value;
-        }
-      });
-
-      return obj as T;
-    });
-
-    console.log(`Processed ${result.length} records from ${sheetName}`);
-    return result;
+    return rows;
   } catch (error) {
     console.error(`Error reading sheet ${sheetName}:`, error);
 

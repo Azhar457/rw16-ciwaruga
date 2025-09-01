@@ -3,7 +3,6 @@ import { decrypt, SessionData } from "@/lib/encrypt";
 
 // Tipe data untuk sesi pengguna setelah login
 export interface SessionUser {
-  user: any;
   id: number;
   email: string;
   role: string;
@@ -72,7 +71,7 @@ export async function getSession(request: NextRequest): Promise<SessionUser | nu
       return null; 
     }
 
-    return sessionData as unknown as SessionUser;
+    return sessionData as SessionUser;
   } catch (error) {
     console.error("Get session error:", error);
     return null;
@@ -104,12 +103,10 @@ export function filterWargaData(user: SessionUser, wargaData: WargaData[]): Part
 
   // Filter data berdasarkan role
   if (user.role === "admin_rw" || user.role === "ketua_rw") {
-    // PERBAIKAN: Menggunakan String() untuk memastikan perbandingan tipe data yang konsisten
-    filteredData = wargaData.filter(w => String(w.rw) === String(user.rw_akses));
+    filteredData = wargaData.filter(w => w.rw === user.rw_akses);
   } else if (user.role === "admin_rt" || user.role === "ketua_rt") {
-    // PERBAIKAN: Menggunakan String() untuk memastikan perbandingan tipe data yang konsisten
     filteredData = wargaData.filter(
-      w => String(w.rt) === String(user.rt_akses) && String(w.rw) === String(user.rw_akses)
+      w => w.rt === user.rt_akses && w.rw === user.rw_akses
     );
   } else if (user.role === "admin_lembaga") {
     return [];
@@ -124,7 +121,6 @@ export function filterWargaData(user: SessionUser, wargaData: WargaData[]): Part
     no_hp: canViewHP ? warga.no_hp : "***HIDDEN***",
   }));
 }
-
 
 /**
  * Memeriksa apakah pengguna boleh membuat data warga baru.

@@ -24,7 +24,7 @@ export function useSession(): UseSessionResult {
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch("/api/auth/session", {
+        const res = await fetch("/api/account/session", {
           credentials: "include",
         });
         if (res.ok) {

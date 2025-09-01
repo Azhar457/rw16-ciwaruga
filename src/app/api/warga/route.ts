@@ -5,6 +5,7 @@ import {
   canCreateWarga,
   canUpdateWarga,
   WargaData,
+  filterWargaData,
 } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -19,19 +20,9 @@ export async function GET(request: NextRequest) {
     }
 
     const allWargaData = await readGoogleSheet<WargaData>("warga");
-    let filteredData: WargaData[] = [];
+    const filteredData = filterWargaData(user, allWargaData);
 
-    if (user.role === "ketua_rw") {
-      filteredData = allWargaData.filter((warga) => warga.rw === user.rw_akses);
-      return NextResponse.json(filteredData);
-    } else if (user.role === "ketua_rt") {
-      filteredData = allWargaData.filter(
-        (warga) => warga.rt === user.rt_akses && warga.rw === user.rw_akses
-      );
-      return NextResponse.json(filteredData);
-    } else {
-      return NextResponse.json([], { status: 403 });
-    }
+    return NextResponse.json(filteredData);
   } catch (error) {
     console.error("Error fetching warga:", error);
     return NextResponse.json(
@@ -40,11 +31,11 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    // Menggunakan fungsi canCreateWarga untuk memeriksa izin
     if (!session || !canCreateWarga(session)) {
       return NextResponse.json(
         {
@@ -102,7 +93,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Menggunakan fungsi canUpdateWarga untuk memeriksa izin
     if (!canUpdateWarga(session, updateType)) {
       const message =
         updateType === "rt_transfer"

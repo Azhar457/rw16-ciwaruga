@@ -4,9 +4,8 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaUsers, FaSearch, FaSignOutAlt, FaBuilding } from 'react-icons/fa';
 import Button from '@/components/ui/Button';
-import { table } from 'console';
 
-// Mendefinisikan tipe data untuk props yang diterima dari Server Component
+// Definisikan tipe data yang akan diterima sebagai props
 interface SessionUser {
   nama_lengkap: string;
   rw_akses: string;
@@ -31,20 +30,18 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
   const [activeRt, setActiveRt] = useState<string>('Semua');
   const router = useRouter();
 
-  // Menghitung daftar RT unik dari data warga.
-  // `useMemo` digunakan agar perhitungan ini hanya berjalan jika `initialWarga` berubah.
+  // Optimisasi: Buat daftar RT secara dinamis dari data yang ada
   const rukunTetangga = useMemo(() => 
     [...new Set(initialWarga.map(w => w.rt))].sort(), 
     [initialWarga]
   );
 
-  // Fungsi untuk proses logout
   async function handleLogout() {
     await fetch('/api/auth/login', { method: 'DELETE' });
     router.push('/auth/login');
   }
 
-  // Memfilter data warga yang akan ditampilkan berdasarkan RT aktif dan kata kunci pencarian.
+  // Filter data berdasarkan RT yang aktif dan kata kunci pencarian
   const displayedWarga = useMemo(() => 
     initialWarga.filter(warga => {
       const inActiveRt = activeRt === 'Semua' || warga.rt === activeRt;
@@ -57,7 +54,7 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
   return (
     <main className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header Dasbor */}
+        {/* Header Dashboard */}
         <div className="bg-gradient-to-r from-emerald-700 to-emerald-500 rounded-lg p-6 mb-6 shadow-lg text-white">
           <div className="flex justify-between items-center">
             <div>
@@ -76,7 +73,6 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
             <div className="bg-blue-100 text-blue-600 p-4 rounded-full"><FaUsers size={24} /></div>
             <div className="ml-4">
               <p className="text-gray-500">Total Warga di RW</p>
-              {/* Menampilkan jumlah total warga dari data yang diterima */}
               <p className="text-2xl font-bold text-gray-800">{initialWarga.length}</p>
             </div>
           </div>
@@ -84,7 +80,6 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
             <div className="bg-green-100 text-green-600 p-4 rounded-full"><FaBuilding size={24} /></div>
             <div className="ml-4">
               <p className="text-gray-500">Jumlah RT</p>
-              {/* Menampilkan jumlah RT yang dihitung dari data warga */}
               <p className="text-2xl font-bold text-gray-800">{rukunTetangga.length}</p>
             </div>
           </div>

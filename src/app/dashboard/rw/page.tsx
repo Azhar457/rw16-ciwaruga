@@ -2,57 +2,47 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { decrypt } from "@/lib/encrypt";
 import { readGoogleSheet } from "@/lib/googleSheets";
+// --- PERBAIKAN DI SINI: Pastikan nama file impornya sama persis ---
 import RwDashboardClient from "@/components/dashboard/rwdashboardclient"; 
 import { SessionUser, WargaData } from '@/lib/auth';
 
-/**
- * Mengambil sesi pengguna dari cookie di server.
- * @returns {Promise<SessionUser | null>} Data sesi pengguna atau null jika tidak valid.
- */
+// Fungsi untuk mendapatkan sesi di Server Component
 async function getServerSession(): Promise<SessionUser | null> {
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) return null;
-    
     try {
         const sessionData = await decrypt(sessionCookie);
-        return sessionData as unknown as SessionUser;
+        return sessionData as SessionUser;
     } catch (error) {
-        console.error("Gagal mendekripsi sesi di server:", error);
         return null;
     }
 }
 
-/**
- * Mengambil dan memfilter data warga untuk RW tertentu langsung di server.
- * @param {string} rw - Nomor RW yang akan dicari.
- * @returns {Promise<WargaData[]>} Daftar warga yang sesuai.
- */
-async function getWargaForRw(user: SessionUser): Promise<WargaData[]> {
+// Fungsi untuk mengambil data warga langsung dari sumbernya di server
+async function getWargaForRw(rw: string): Promise<WargaData[]> {
     try {
         const allWarga = await readGoogleSheet<WargaData>("warga");
-        
-        // --- PERBAIKAN UTAMA DI SINI ---
-        // Mengubah kedua nilai menjadi String sebelum membandingkan
-        // untuk mengatasi perbedaan tipe data (angka vs teks).
-        const filteredWarga = allWarga.filter(warga => String(warga.rw) === String(user.rw_akses));
-        
-        return filteredWarga;
+        // Filter di server untuk efisiensi
+        return allWarga.filter(warga => warga.rw === rw);
     } catch (error) {
-        console.error("Gagal mengambil data warga di server:", error);
+        console.error("Failed to fetch warga data on server:", error);
         return [];
     }
 }
 
-// Komponen Server utama untuk halaman dasbor RW
+// Ini adalah Server Component utama untuk halaman dashboard RW
 export default async function RWDashboardPage() {
     const session = await getServerSession();
 
+    // 1. Cek keamanan di server, jika gagal, langsung redirect
     if (!session || !['ketua_rw', 'admin_rw'].includes(session.role)) {
         redirect('/auth/login');
     }
 
-    const wargaData = await getWargaForRw(session);
+    // 2. Ambil data warga di server
+    const wargaData = await getWargaForRw(session.rw_akses);
 
+    // 3. Render Client Component dan kirim data sebagai props
     return (
         <RwDashboardClient initialWarga={wargaData} session={session} />
     );
