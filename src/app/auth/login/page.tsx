@@ -30,26 +30,30 @@ export default function LoginPage() {
       const result = await response.json();
 
       if (result.success) {
-        // Redirect berdasarkan role
-        switch (result.user.role) {
-          case "admin":
-            router.push("/dashboard/admin");
-            break;
-          case "ketua_rw":
-            router.push("/dashboard/rw");
-            break;
-          case "ketua_rt":
-            router.push("/dashboard/rt");
-            break;
-          case "warga":
-            router.push("/dashboard/warga");
-            break;
-          default:
-            router.push("/dashboard");
+        const role = result.user.role.toLowerCase();
+        if (role === "developer") {
+          router.push("/dashboard");
+        } else if (role.includes("admin")) {
+          router.push("/dashboard/admin");
+        } else {
+          switch (role) {
+            case "ketua_rw":
+              router.push("/dashboard/rw");
+              break;
+            case "ketua_rt":
+              router.push("/dashboard/rt");
+              break;
+            case "warga":
+              router.push("/dashboard/warga");
+              break;
+            default:
+              router.push("/dashboard");
+          }
         }
       } else {
         setError(result.message);
       }
+      
     } catch (error) {
       console.error("Login error:", error);
       setError("Terjadi kesalahan. Silakan coba lagi.");

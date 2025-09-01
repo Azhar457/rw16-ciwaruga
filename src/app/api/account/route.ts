@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || session.role !== "developer") {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -51,8 +51,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
-
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || session.role !== "developer") {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -144,7 +143,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || session.role !== "developer") {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }

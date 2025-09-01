@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (
       !session ||
-      !["ketua_rt", "ketua_rw", "admin", "super_admin"].includes(session.role)
+      !["admin_bph", "admin_rw"].includes(session.role)
     ) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
