@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import {
+  readGoogleSheet,
+  updateGoogleSheet,
+  writeGoogleSheet,
+} from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
@@ -76,7 +80,9 @@ export async function POST(request: NextRequest) {
       "ketua_rt",
       "ketua_rw",
       "admin_lembaga",
+      "admin_bph",
       "admin",
+      "developer",
     ];
     if (!allowedRoles.includes(role)) {
       return NextResponse.json(
@@ -168,9 +174,8 @@ export async function PUT(request: NextRequest) {
 
     dataToUpdate.updated_at = new Date().toISOString();
 
-    // Logika untuk update ke Google Sheets belum ada, tapi respons sukses dikembalikan
-    console.log("Data to update:", id, dataToUpdate);
-    // await updateGoogleSheet("account", id, dataToUpdate); // Fungsi ini perlu diimplementasikan
+    // Update Google Sheet
+    await updateGoogleSheet("account", id, dataToUpdate);
 
     return NextResponse.json({
       success: true,
