@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       if (
         !res.ok ||
         !json.success ||
-        !["admin", "super_admin"].includes(json.user?.role)
+        !(json.user?.role && json.user.role.toLowerCase().includes("admin"))
       ) {
         router.push("/auth/login");
         return false;
