@@ -26,6 +26,23 @@ interface GoogleSheetsResponse {
   };
 }
 
+interface AccountData {
+  id: number;
+  email: string;
+  password_hash: string;
+  role: string;
+  rt_akses: string;
+  rw_akses: string;
+  nama_lengkap: string;
+  status_aktif: string;
+  last_login: string;
+  subscription_status: string;
+  subscription_end: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: string | number;
+}
+
 type CacheEntry<T> = {
   data: T;
   timestamp: number;
@@ -466,28 +483,27 @@ export async function postSheetData(): Promise<{
   };
 }
 
-export async function updateGoogleSheet({
-  sheetName,
-  id,
-  data,
-}: {
-  sheetName: string;
-  id: string | number;
-  data: SheetRow;
-}): Promise<{ success: boolean; message: string }> {
+export async function updateGoogleSheet(
+  sheetName: string,
+  id: string | number,
+  dataToUpdate: Partial<AccountData>
+): Promise<{ success: boolean; message: string }> {
   try {
     if (!APPS_SCRIPT_URL) {
       return { success: false, message: "Apps Script URL not configured" };
     }
+
     const payload = {
       action: "update",
       sheetName,
       id,
-      data,
+      data: dataToUpdate,
     };
+
     const response = await axios.post(APPS_SCRIPT_URL, payload, {
       headers: { "Content-Type": "application/json" },
     });
+
     if (response.data.success) {
       return { success: true, message: "Operasi berhasil" };
     } else {
@@ -496,7 +512,8 @@ export async function updateGoogleSheet({
         message: response.data.error || "Gagal update data",
       };
     }
-  } catch {
+  } catch (error) {
+    console.error("Error in updateGoogleSheet:", error);
     return { success: false, message: "Internal server error" };
   }
 }
