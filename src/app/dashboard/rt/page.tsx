@@ -133,9 +133,6 @@ export default function RTDashboard() {
                   className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              <Button variant="primary" className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                <FaUserPlus className="mr-2" /> Tambah Warga
-              </Button>
             </div>
           </div>
 
