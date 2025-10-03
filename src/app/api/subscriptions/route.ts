@@ -123,11 +123,7 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    await updateGoogleSheet({
-      sheetName: "subscriptions",
-      id,
-      data: dataToUpdate,
-    });
+    await updateGoogleSheet("subscriptions", id, dataToUpdate);
 
     return NextResponse.json({
       success: true,
