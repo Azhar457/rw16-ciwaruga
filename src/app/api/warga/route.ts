@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession, canUpdateWarga, WargaData } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 function isSubscriptionActive(user: any): boolean {
   return (
     user.subscription_status === "active" &&
@@ -29,10 +31,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const allWargaData = await readGoogleSheet<WargaData>("warga");
+    // PERUBAHAN DI SINI: Tambahkan 'true' untuk bypass cache internal
+    const allWargaData = await readGoogleSheet<WargaData>("warga", true);
 
     // Filter data based on RT/RW access dan status aktif
-    // In /api/warga/route.ts
     const filteredData = allWargaData.filter(
       (warga: WargaData) =>
         String(warga.rt) === String(user.rt_akses) &&
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Update POST function
+// ... (sisa kode POST, PUT, DELETE tidak perlu diubah)
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);

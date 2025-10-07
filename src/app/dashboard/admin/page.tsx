@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import Button from "@/components/ui/Button";
 import LoadingSpinner from "@/components/ui/loadingSpinner";
-import { SessionUser } from "@/lib/auth";
+import { useSession } from "@/hooks/useSession"; // Import useSession hook
 
 // Define types for the data fetched from the API
 interface DashboardData {
@@ -50,43 +50,26 @@ const endpoints: Endpoint[] = [
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { session, loading: sessionLoading } = useSession(); // Gunakan useSession
   const [activeTab, setActiveTab] = useState("warga");
   const [data, setData] = useState<DashboardData>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [session, setSession] = useState<SessionUser | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  async function checkAuth() {
-    try {
-      const res = await fetch("/api/auth/session");
-      const json = await res.json();
+  useEffect(() => {
+    if (!sessionLoading) {
       if (
-        !res.ok ||
-        !json.success ||
-        !(json.user?.role && json.user.role.toLowerCase().includes("admin"))
+        !session?.user ||
+        !session.user.role.toLowerCase().includes("admin")
       ) {
         router.push("/auth/login");
-        return false;
-      }
-
-      setSession(json.user);
-      return true;
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      router.push("/auth/login");
-      return false;
-    }
-  }
-
-  useEffect(() => {
-    checkAuth().then((isAuth) => {
-      if (isAuth) {
+      } else {
         fetchAll();
       }
-    });
-  }, [router]);
+    }
+  }, [session, sessionLoading, router]);
 
   async function fetchAll() {
     setLoading(true);
@@ -157,7 +140,7 @@ export default function AdminDashboard() {
       )
     ) || [];
 
-  if (!session) {
+  if (sessionLoading || !session?.user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -182,8 +165,8 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="text-right text-white">
-              <p className="font-medium">{session.nama_lengkap}</p>
-              <p className="text-sm text-emerald-100">{session.role}</p>
+              <p className="font-medium">{session.user.nama_lengkap}</p>
+              <p className="text-sm text-emerald-100">{session.user.role}</p>
               <Button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
