@@ -141,10 +141,10 @@ export default function RTDashboard() {
   // -----------------------------------------------------------------
   // Fetch data
   // -----------------------------------------------------------------
-  const fetchData = async () => {
+  const fetchData = async (bypassCache = false) => {
     setIsRefreshing(true);
     try {
-      const wargaRes = await fetch("/api/warga");
+      const wargaRes = await fetch(`/api/warga?bypassCache=${bypassCache}`);
       if (!wargaRes.ok) {
         console.error("Gagal mengambil data warga");
         return;
@@ -152,23 +152,12 @@ export default function RTDashboard() {
       const response = await wargaRes.json();
 
       if (response.success && Array.isArray(response.data)) {
-        // Pastikan perbandingan dengan mengkonversi ke string
-        const formattedData = response.data
-          .filter(
-            (warga: WargaData) =>
-              String(warga.rt) === String(session?.rt_akses) &&
-              String(warga.rw) === String(session?.rw_akses) &&
-              warga.status_aktif === "Aktif"
-          )
-          .map((warga: WargaData) => ({
-            ...warga,
-            // Convert numbers to strings for display
-            rt: String(warga.rt),
-            rw: String(warga.rw),
-            no_hp: formatPhoneNumber(String(warga.no_hp)),
-            created_at: formatDate(warga.created_at?.toString() || ""),
-            updated_at: formatDate(warga.updated_at?.toString() || ""),
-          }));
+        const formattedData = response.data.map((warga: WargaData) => ({
+          ...warga,
+          no_hp: formatPhoneNumber(String(warga.no_hp)),
+          created_at: formatDate(warga.created_at?.toString() || ""),
+          updated_at: formatDate(warga.updated_at?.toString() || ""),
+        }));
         setWargaList(formattedData);
       } else {
         console.error("Format data tidak sesuai:", response);
@@ -304,7 +293,11 @@ export default function RTDashboard() {
         setLoading(false);
       }
     }
+    const interval = setInterval(() => {
+      fetchData(true); // Bypass cache untuk memastikan data terbaru
+    }, 30000); // Refresh setiap 30 detik
 
+    return () => clearInterval(interval); // Bersihkan interval saat komponen unmount
     initData();
   }, [router]);
 
@@ -395,7 +388,7 @@ export default function RTDashboard() {
               </Button>
 
               <Button
-                onClick={fetchData}
+                onClick={() => fetchData(true)} // Tambahkan parameter untuk bypass cache
                 className="bg-blue-500 hover:bg-blue-600 text-white"
                 disabled={isRefreshing}
               >

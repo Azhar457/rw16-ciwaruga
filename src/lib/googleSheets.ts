@@ -90,13 +90,15 @@ function processGoogleSheetsResponse<T = SheetRow>(
 }
 
 export async function readGoogleSheet<T = SheetRow>(
-  sheetName: string
+  sheetName: string,
+  bypassCache = false // Tambahkan parameter untuk melewati cache
 ): Promise<T[]> {
   const now = Date.now();
   const cacheKey = sheetName;
 
-  // Cek cache
+  // Cek cache jika bypassCache tidak diaktifkan
   if (
+    !bypassCache &&
     sheetCache[cacheKey] &&
     now - sheetCache[cacheKey].timestamp < CACHE_DURATION
   ) {
@@ -132,11 +134,13 @@ export async function readGoogleSheet<T = SheetRow>(
 
     const rows: T[] = processGoogleSheetsResponse<T>(response.data);
 
-    // Simpan ke cache
-    sheetCache[cacheKey] = {
-      data: rows,
-      timestamp: now,
-    };
+    // Simpan ke cache jika bypassCache tidak diaktifkan
+    if (!bypassCache) {
+      sheetCache[cacheKey] = {
+        data: rows,
+        timestamp: now,
+      };
+    }
 
     return rows;
   } catch (error) {
