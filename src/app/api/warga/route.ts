@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
-import {
-  getSession,
-  canUpdateWarga,
-  WargaData,
-} from "@/lib/auth";
+import { getSession, canUpdateWarga, WargaData } from "@/lib/auth";
 
 function isSubscriptionActive(user: any): boolean {
   return (
@@ -33,7 +29,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const allWargaData = await readGoogleSheet<WargaData>("warga", true);
+    const allWargaData = await readGoogleSheet<WargaData>("warga");
 
     // Filter data based on RT/RW access dan status aktif
     // In /api/warga/route.ts

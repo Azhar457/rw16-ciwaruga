@@ -141,10 +141,10 @@ export default function RTDashboard() {
   // -----------------------------------------------------------------
   // Fetch data
   // -----------------------------------------------------------------
-  const fetchData = async (bypassCache = false) => {
+  const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      const wargaRes = await fetch(`/api/warga?bypassCache=${bypassCache}`);
+      const wargaRes = await fetch(`/api/warga`);
       if (!wargaRes.ok) {
         console.error("Gagal mengambil data warga");
         return;
@@ -293,11 +293,6 @@ export default function RTDashboard() {
         setLoading(false);
       }
     }
-    const interval = setInterval(() => {
-      fetchData(true); // Bypass cache untuk memastikan data terbaru
-    }, 30000); // Refresh setiap 30 detik
-
-    return () => clearInterval(interval); // Bersihkan interval saat komponen unmount
     initData();
   }, [router]);
 
@@ -388,7 +383,7 @@ export default function RTDashboard() {
               </Button>
 
               <Button
-                onClick={() => fetchData(true)} // Tambahkan parameter untuk bypass cache
+                onClick={() => fetchData()}
                 className="bg-blue-500 hover:bg-blue-600 text-white"
                 disabled={isRefreshing}
               >
