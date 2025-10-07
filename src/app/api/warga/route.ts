@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ... (sisa kode POST, PUT, DELETE tidak perlu diubah)
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
@@ -132,33 +131,54 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getSession(request);
-    const { id, updateType, ...updateData } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
 
-    if (!session) {
+    if (!id) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
+        { success: false, message: "ID warga diperlukan" },
+        { status: 400 }
       );
     }
 
-    if (!canUpdateWarga(session, updateType)) {
-      const message =
-        updateType === "rt_transfer"
-          ? "Unauthorized - Perpindahan RT hanya bisa dilakukan Admin RW"
-          : "Unauthorized - Tidak bisa mengupdate data warga";
-
-      return NextResponse.json({ success: false, message }, { status: 403 });
+    if (session?.role !== "ketua_rt" || !isSubscriptionActive(session)) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 403 }
+      );
     }
 
-    // Logika untuk update data (perlu diimplementasikan)
-    console.log(`Updating warga ID ${id} with data:`, updateData);
+    const updateData = await request.json();
+
+    // Pastikan admin RT tidak mengubah data RT/RW
+    if (
+      String(updateData.rt) !== String(session.rt_akses) ||
+      String(updateData.rw) !== String(session.rw_akses)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Anda tidak dapat mengubah data RT/RW" },
+        { status: 403 }
+      );
+    }
+
+    const dataToUpdate = {
+      ...updateData,
+      updated_at: new Date().toISOString(),
+    };
+
+    const result = await writeGoogleSheet("warga", {
+      action: "update",
+      id: parseInt(id, 10),
+      data: dataToUpdate,
+    });
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
 
     return NextResponse.json({
       success: true,
-      message:
-        updateType === "rt_transfer"
-          ? "Perpindahan RT berhasil diproses"
-          : "Data warga berhasil diupdate",
+      message: "Data warga berhasil diperbarui",
     });
   } catch (error) {
     console.error("Error updating warga:", error);
@@ -168,7 +188,6 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession(request);
