@@ -23,16 +23,19 @@ const toastConfig = {
     icon: <FaCheckCircle className="text-emerald-500" size={24} />,
     bg: "bg-emerald-50 border-emerald-200",
     text: "text-emerald-800",
+    border: "border-emerald-500", // Tambahkan border color
   },
   error: {
     icon: <FaExclamationCircle className="text-red-500" size={24} />,
     bg: "bg-red-50 border-red-200",
     text: "text-red-800",
+    border: "border-red-500", // Tambahkan border color
   },
   info: {
     icon: <FaInfoCircle className="text-blue-500" size={24} />,
     bg: "bg-blue-50 border-blue-200",
     text: "text-blue-800",
+    border: "border-blue-500", // Tambahkan border color
   },
 };
 
@@ -53,11 +56,12 @@ export default function Toast({
     };
   }, [id, onClose, duration]);
 
-  const config = toastConfig[type];
+  // Fallback jika tipe tidak valid untuk mencegah crash
+  const config = toastConfig[type] || toastConfig.info;
 
   return (
     <div
-      className={`max-w-sm w-full rounded-lg shadow-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4 ${config.bg} transform transition-all animate-toast-in`}
+      className={`max-w-sm w-full rounded-lg shadow-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4 ${config.bg} ${config.border} transform transition-all animate-toast-in`}
     >
       <div className="p-4 flex items-start">
         <div className="flex-shrink-0">{config.icon}</div>

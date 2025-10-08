@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FaUsers,
@@ -47,6 +47,7 @@ interface WargaData {
   created_at?: string;
   updated_at?: string;
   last_verified?: string;
+  [key: string]: any; // Menambahkan index signature
 }
 
 interface WargaFormData {
@@ -68,6 +69,8 @@ interface WargaFormData {
 }
 export default function RTDashboard() {
   const { addToast } = useToast(); // 2. Panggil hook di dalam komponen
+  const router = useRouter();
+
   function formatPhoneNumber(phone: string | undefined | null): string {
     if (!phone) return "";
     const phoneStr = String(phone);
@@ -102,7 +105,8 @@ export default function RTDashboard() {
     }
     return "";
   };
-
+  // 2. Buat ref untuk checkbox "select all"
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -113,7 +117,6 @@ export default function RTDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWarga, setEditingWarga] = useState<WargaData | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const router = useRouter();
 
   const [formData, setFormData] = useState<WargaFormData>({
     nama: "",
@@ -179,6 +182,15 @@ export default function RTDashboard() {
     }
     initData();
   }, [router]);
+
+  // 3. Gunakan useEffect untuk mengatur indeterminate
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      const isIndeterminate =
+        selectedIds.length > 0 && selectedIds.length < wargaList.length;
+      selectAllCheckboxRef.current.indeterminate = isIndeterminate;
+    }
+  }, [selectedIds, wargaList.length]);
 
   const handleOpenModal = (warga: WargaData | null = null) => {
     if (warga) {
