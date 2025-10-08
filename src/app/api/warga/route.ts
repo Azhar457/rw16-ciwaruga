@@ -1,51 +1,36 @@
+// src/app/api/warga/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
-import { getSession, canUpdateWarga, WargaData } from "@/lib/auth";
+import { getSession, WargaData } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 function isSubscriptionActive(user: any): boolean {
+  if (!user) return false;
   return (
     user.subscription_status === "active" &&
     new Date(user.subscription_end) > new Date()
   );
 }
 
-// Update GET function
+// GET (sedikit berubah, tanpa bypassCache lagi)
 export async function GET(request: NextRequest) {
   try {
     const user = await getSession(request);
-
-    if (!user) {
+    if (!user || !isSubscriptionActive(user)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
-
-    // Check subscription
-    if (!isSubscriptionActive(user)) {
-      return NextResponse.json(
-        { success: false, message: "Subscription inactive or expired" },
-        { status: 403 }
-      );
-    }
-
-    // PERUBAHAN DI SINI: Tambahkan 'true' untuk bypass cache internal
-    const allWargaData = await readGoogleSheet<WargaData>("warga", true);
-
-    // Filter data based on RT/RW access dan status aktif
+    const allWargaData = await readGoogleSheet<WargaData>("warga");
     const filteredData = allWargaData.filter(
-      (warga: WargaData) =>
+      (warga) =>
         String(warga.rt) === String(user.rt_akses) &&
         String(warga.rw) === String(user.rw_akses) &&
         warga.status_aktif === "Aktif"
     );
-
-    return NextResponse.json({
-      success: true,
-      data: filteredData,
-    });
+    return NextResponse.json({ success: true, data: filteredData });
   } catch (error) {
     console.error("Error fetching warga:", error);
     return NextResponse.json(
@@ -55,69 +40,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST (disesuaikan dengan writeGoogleSheet baru)
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
-
-    if (!session) {
+    if (session?.role !== "ketua_rt" || !isSubscriptionActive(session)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Check role and subscription
-    if (session.role !== "ketua_rt" || !isSubscriptionActive(session)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized - Requires active Ketua RT subscription",
-        },
         { status: 403 }
       );
     }
-
     const newWarga = await request.json();
-
-    // Validate RT/RW access
-    if (
-      String(newWarga.rt) !== String(session.rt_akses) ||
-      String(newWarga.rw) !== String(session.rw_akses)
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized - Can only add data for assigned RT/RW",
-        },
-        { status: 403 }
-      );
-    }
-
-    const wargaData = await readGoogleSheet<WargaData>("warga");
-    const maxId = Math.max(0, ...wargaData.map((w: WargaData) => w.id));
-
     const wargaToAdd = {
       ...newWarga,
-      id: maxId + 1,
       rt: session.rt_akses,
       rw: session.rw_akses,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    const result = await writeGoogleSheet("warga", wargaToAdd);
-
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, message: result.message },
-        { status: 500 }
-      );
-    }
-
+    const result = await writeGoogleSheet("warga", {
+      action: "append",
+      data: wargaToAdd,
+    });
+    if (!result.success) throw new Error(result.message);
     return NextResponse.json({
       success: true,
       message: "Data warga berhasil ditambahkan",
-      data: wargaToAdd,
     });
   } catch (error) {
     console.error("Error adding warga:", error);
@@ -128,54 +76,35 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT (disesuaikan dengan writeGoogleSheet baru)
 export async function PUT(request: NextRequest) {
   try {
     const session = await getSession(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
     if (!id) {
       return NextResponse.json(
         { success: false, message: "ID warga diperlukan" },
         { status: 400 }
       );
     }
-
     if (session?.role !== "ketua_rt" || !isSubscriptionActive(session)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
-
     const updateData = await request.json();
-
-    // Pastikan admin RT tidak mengubah data RT/RW
-    if (
-      String(updateData.rt) !== String(session.rt_akses) ||
-      String(updateData.rw) !== String(session.rw_akses)
-    ) {
-      return NextResponse.json(
-        { success: false, message: "Anda tidak dapat mengubah data RT/RW" },
-        { status: 403 }
-      );
-    }
-
     const dataToUpdate = {
       ...updateData,
       updated_at: new Date().toISOString(),
     };
-
     const result = await writeGoogleSheet("warga", {
       action: "update",
       id: parseInt(id, 10),
       data: dataToUpdate,
     });
-
-    if (!result.success) {
-      throw new Error(result.message);
-    }
-
+    if (!result.success) throw new Error(result.message);
     return NextResponse.json({
       success: true,
       message: "Data warga berhasil diperbarui",
@@ -188,49 +117,40 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+// DELETE (diperbarui untuk menangani single dan batch delete)
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession(request);
-    const { id } = await request.json();
+    const { ids } = await request.json(); // Sekarang mengharapkan array `ids`
 
-    if (!session) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
+        { success: false, message: "IDs warga diperlukan" },
+        { status: 400 }
       );
     }
 
-    // Check role and subscription
-    if (session.role !== "ketua_rt" || !isSubscriptionActive(session)) {
+    if (session?.role !== "ketua_rt" || !isSubscriptionActive(session)) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized - Requires active Ketua RT subscription",
-        },
+        { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
 
-    // Update status to non-aktif instead of deleting
     const result = await writeGoogleSheet("warga", {
-      action: "update",
-      id,
-      data: {
-        status_aktif: "Non-Aktif",
-        updated_at: new Date().toISOString(),
-      },
+      action: "batch_update_status",
+      ids: ids,
+      status: "Non-Aktif",
     });
 
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, message: result.message },
-        { status: 500 }
-      );
+      throw new Error(result.message);
     }
 
     return NextResponse.json({
       success: true,
-      message: "Data warga berhasil dihapus",
+      message: `${ids.length} data warga berhasil dihapus (dinonaktifkan)`,
     });
   } catch (error) {
     console.error("Error deleting warga:", error);
