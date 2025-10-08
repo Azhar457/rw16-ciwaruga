@@ -1,530 +1,171 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import axios from "axios";
+// src/lib/googleSheets.ts
+import { google } from "googleapis";
+import path from "path";
+import { WargaData } from "./auth"; // Pastikan path ini benar
 
-const SHEET_ID = process.env.SHEET_ID;
-const API_KEY = process.env.GOOGLE_API_KEY;
-const APPS_SCRIPT_URL = process.env.APP_SCRIPT_URL;
-const BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets";
+const SPREADSHEET_ID = process.env.SHEET_ID;
 
-if (!SHEET_ID || !API_KEY) {
-  console.error("Missing Google Sheets credentials:", {
-    hasSheetId: !!SHEET_ID,
-    hasApiKey: !!API_KEY,
-  });
-}
+// Otentikasi menggunakan service account
+const auth = new google.auth.GoogleAuth({
+  keyFile: path.join(process.cwd(), "credentials.json"),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
 
-export interface SheetRow {
-  [key: string]: string | number | undefined;
-}
+const sheets = google.sheets({ version: "v4", auth });
 
-interface GoogleSheetsResponse {
-  values?: string[][];
-  error?: {
-    code: number;
-    message: string;
-    status: string;
-  };
-}
-
-interface AccountData {
-  id: number;
-  email: string;
-  password_hash: string;
-  role: string;
-  rt_akses: string;
-  rw_akses: string;
-  nama_lengkap: string;
-  status_aktif: string;
-  last_login: string;
-  subscription_status: string;
-  subscription_end: string;
-  created_at: string;
-  updated_at: string;
-  [key: string]: string | number;
-}
-
-type CacheEntry<T> = {
-  data: T;
-  timestamp: number;
-};
-
-const sheetCache: Record<string, CacheEntry<any>> = {};
-const CACHE_DURATION = 1000 * 60 * 5; // 5 menit
-
-function processGoogleSheetsResponse<T = SheetRow>(
-  data: GoogleSheetsResponse
-): T[] {
-  const values = data.values || [];
-  if (values.length === 0) return [];
-
-  const headers = values[0];
-  const rows = values.slice(1);
-
-  return rows.map((row: string[]) => {
-    const obj: Record<string, string | number> = {};
-    headers.forEach((header: string, i: number) => {
-      const value = row[i] || "";
-      if (
-        !isNaN(Number(value)) &&
-        value !== "" &&
-        value !== null &&
-        typeof value === "string"
-      ) {
-        if (
-          value === "0" ||
-          (!value.startsWith("0") &&
-            !value.includes("-") &&
-            !value.includes("+") &&
-            !value.includes("e"))
-        ) {
-          obj[header] = Number(value);
-        } else {
-          obj[header] = value;
-        }
+// Helper untuk mengubah array data menjadi objek
+const rowsToObjects = (headers: any[], rows: any[][]): any[] => {
+  return rows.map((row) => {
+    const obj: { [key: string]: any } = {};
+    headers.forEach((header, i) => {
+      const value = row[i];
+      // Konversi ke angka jika memungkinkan, dengan pengecualian untuk nomor telepon
+      if (header !== "no_hp" && value !== "" && !isNaN(Number(value))) {
+        obj[header] = Number(value);
       } else {
-        obj[header] = value;
+        obj[header] = value !== null && value !== undefined ? value : "";
       }
     });
-    return obj as T;
+    return obj;
   });
-}
+};
 
-export async function readGoogleSheet<T = SheetRow>(
-  sheetName: string,
-  bypassCache = false // Tambahkan parameter untuk melewati cache
-): Promise<T[]> {
-  const now = Date.now();
-  const cacheKey = sheetName;
-
-  // Cek cache jika bypassCache tidak diaktifkan
-  if (
-    !bypassCache &&
-    sheetCache[cacheKey] &&
-    now - sheetCache[cacheKey].timestamp < CACHE_DURATION
-  ) {
-    return sheetCache[cacheKey].data;
-  }
-
+export async function readGoogleSheet<T>(sheetName: string): Promise<T[]> {
   try {
-    if (!SHEET_ID || !API_KEY) {
-      console.error("Missing Google Sheets configuration");
-      return [];
+    if (!SPREADSHEET_ID) {
+      throw new Error("Spreadsheet ID not configured");
     }
-
-    const range = `${sheetName}!A:Z`;
-    const encodedRange = encodeURIComponent(range);
-    const url = `${BASE_URL}/${SHEET_ID}/values/${encodedRange}`;
-    const response = await axios.get<GoogleSheetsResponse>(url, {
-      params: {
-        key: API_KEY,
-        valueRenderOption: "UNFORMATTED_VALUE",
-        dateTimeRenderOption: "FORMATTED_STRING",
-      },
-      timeout: 10000,
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "RT-RW-Portal/1.0",
-      },
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: sheetName,
     });
 
-    if (response.data.error) {
-      console.error("Google Sheets API Error:", response.data.error);
-      return [];
-    }
+    const rows = response.data.values;
+    if (!rows || rows.length <= 1) return [];
 
-    const rows: T[] = processGoogleSheetsResponse<T>(response.data);
-
-    // Simpan ke cache jika bypassCache tidak diaktifkan
-    if (!bypassCache) {
-      sheetCache[cacheKey] = {
-        data: rows,
-        timestamp: now,
-      };
-    }
-
-    return rows;
+    const headers = rows.shift() || [];
+    return rowsToObjects(headers, rows) as T[];
   } catch (error) {
-    console.error(`Error reading sheet ${sheetName}:`, error);
-
-    if (axios.isAxiosError(error)) {
-      console.error("Axios error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url,
-      });
-    }
-
+    console.error(`Error reading from sheet ${sheetName}:`, error);
+    // Kembalikan array kosong agar aplikasi tidak crash
     return [];
   }
 }
 
-export async function readGoogleSheetRange(
-  sheetName: string,
-  range: string = "A:Z"
-): Promise<string[][]> {
-  try {
-    if (!SHEET_ID || !API_KEY) {
-      console.error("Missing Google Sheets configuration");
-      return [];
-    }
-
-    const fullRange = `${sheetName}!${range}`;
-    const encodedRange = encodeURIComponent(fullRange);
-    const url = `${BASE_URL}/${SHEET_ID}/values/${encodedRange}`;
-
-    const response = await axios.get<GoogleSheetsResponse>(url, {
-      params: {
-        key: API_KEY,
-        valueRenderOption: "UNFORMATTED_VALUE",
-      },
-      timeout: 10000,
-    });
-
-    if (response.data.error) {
-      console.error("Google Sheets API Error:", response.data.error);
-      return [];
-    }
-
-    return response.data.values || [];
-  } catch (error) {
-    console.error(`Error reading range ${range} from ${sheetName}:`, error);
-    return [];
-  }
-}
-
-export async function verifyWargaData(
-  nikInput: string,
-  kkInput: string
-): Promise<SheetRow | null> {
-  try {
-    console.log("Starting warga verification...");
-
-    const wargaData = await readGoogleSheet("warga");
-
-    if (wargaData.length === 0) {
-      console.log("No warga data found");
-      return null;
-    }
-
-    const foundWarga = wargaData.find((warga: SheetRow) => {
-      return (
-        String(warga.nik || warga.NIK || warga.nik_encrypted || "") ===
-          nikInput &&
-        String(
-          warga.kk || warga.KK || warga.no_kk || warga.kk_encrypted || ""
-        ) === kkInput
-      );
-    });
-
-    if (foundWarga) {
-      console.log("Warga data found and verified");
-
-      const safeData = { ...foundWarga };
-      delete safeData.nik;
-      delete safeData.kk;
-      delete safeData.nik_encrypted;
-      delete safeData.kk_encrypted;
-
-      return {
-        ...safeData,
-        nik_masked:
-          nikInput.substring(0, 4) +
-          "****" +
-          nikInput.substring(nikInput.length - 4),
-        kk_masked:
-          kkInput.substring(0, 4) +
-          "****" +
-          kkInput.substring(kkInput.length - 4),
-      };
-    }
-
-    console.log("Warga data not found");
-    return null;
-  } catch (error) {
-    console.error("Error verifying warga data:", error);
-    return null;
-  }
-}
-
-export function sanitizeWargaData(data: SheetRow[]): SheetRow[] {
-  return data.map((item) => {
-    const safeData = { ...item };
-    delete safeData.nik;
-    delete safeData.kk;
-    delete safeData.nik_encrypted;
-    delete safeData.kk_encrypted;
-    return {
-      ...safeData,
-      nik: "***HIDDEN***",
-      kk: "***HIDDEN***",
-    };
-  });
-}
-
-export function filterActiveRecords<T extends Record<string, unknown>>(
-  data: T[]
-): T[] {
-  return data.filter(
-    (item) =>
-      item.status_aktif === "Aktif" ||
-      item.status_aktif === "aktif" ||
-      item.status === "Aktif" ||
-      item.status === "aktif"
-  );
-}
-
-export async function getLoker(): Promise<SheetRow[]> {
-  try {
-    const data = await readGoogleSheet("loker");
-    return filterActiveRecords(data);
-  } catch (error) {
-    console.error("Error getting loker data:", error);
-    return [];
-  }
-}
-
-export async function getUmkm(): Promise<SheetRow[]> {
-  try {
-    const data = await readGoogleSheet("umkm");
-    return filterActiveRecords(data);
-  } catch (error) {
-    console.error("Error getting UMKM data:", error);
-    return [];
-  }
-}
-
-export async function getBerita(): Promise<SheetRow[]> {
-  try {
-    const data = await readGoogleSheet("berita");
-    return filterActiveRecords(data);
-  } catch (error) {
-    console.error("Error getting berita data:", error);
-    return [];
-  }
-}
-
-export async function getWarga(): Promise<SheetRow[]> {
-  try {
-    const data = await readGoogleSheet("warga");
-    return sanitizeWargaData(data);
-  } catch (error) {
-    console.error("Error getting warga data:", error);
-    return [];
-  }
-}
-
-export async function getBph(): Promise<SheetRow[]> {
-  try {
-    return await readGoogleSheet("bph");
-  } catch (error) {
-    console.error("Error getting BPH data:", error);
-    return [];
-  }
-}
-
-export async function getLembagaDesa(): Promise<SheetRow[]> {
-  try {
-    return await readGoogleSheet("lembaga_desa");
-  } catch (error) {
-    console.error("Error getting lembaga desa data:", error);
-    return [];
-  }
-}
-
-export async function getAccount(): Promise<SheetRow[]> {
-  try {
-    return await readGoogleSheet("account");
-  } catch (error) {
-    console.error("Error getting account data:", error);
-    return [];
-  }
-}
-
-export async function getLog(): Promise<SheetRow[]> {
-  try {
-    return await readGoogleSheet("log");
-  } catch (error) {
-    console.error("Error getting log data:", error);
-    return [];
-  }
-}
-
-export async function getBlokirAttempts(): Promise<SheetRow[]> {
-  try {
-    return await readGoogleSheet("blokir_attempts");
-  } catch (error) {
-    console.error("Error getting blokir attempts data:", error);
-    return [];
-  }
-}
-
-export async function getSubscriptions(): Promise<SheetRow[]> {
-  try {
-    return await readGoogleSheet("subscriptions");
-  } catch (error) {
-    console.error("Error getting subscriptions data:", error);
-    return [];
-  }
-}
-
-export function searchRecords<T extends Record<string, SheetRow>>(
-  data: T[],
-  searchField: string,
-  searchValue: string
-): T[] {
-  return data.filter((item) => {
-    const fieldValue = String(item[searchField] || "").toLowerCase();
-    return fieldValue.includes(searchValue.toLowerCase());
-  });
-}
-
-export function sortRecords<T extends Record<string, SheetRow>>(
-  data: T[],
-  sortField: string,
-  order: "asc" | "desc" = "asc"
-): T[] {
-  return [...data].sort((a, b) => {
-    const aVal = a[sortField];
-    const bVal = b[sortField];
-
-    if (typeof aVal === "number" && typeof bVal === "number") {
-      return order === "asc" ? aVal - bVal : bVal - aVal;
-    }
-
-    const aStr = String(aVal || "").toLowerCase();
-    const bStr = String(bVal || "").toLowerCase();
-
-    if (order === "asc") {
-      return aStr.localeCompare(bStr);
-    } else {
-      return bStr.localeCompare(aStr);
-    }
-  });
-}
-
-export function paginateRecords<T>(
-  data: T[],
-  page: number = 1,
-  limit: number = 10
-): {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-} {
-  const offset = (page - 1) * limit;
-  const paginatedData = data.slice(offset, offset + limit);
-
-  return {
-    data: paginatedData,
-    pagination: {
-      page,
-      limit,
-      total: data.length,
-      totalPages: Math.ceil(data.length / limit),
-      hasNext: offset + limit < data.length,
-      hasPrev: page > 1,
-    },
-  };
-}
-
-export async function getSheetData(range: string): Promise<string[][]> {
-  const [sheetName] = range.split("!");
-  return await readGoogleSheetRange(sheetName, range.split("!")[1] || "A:Z");
+interface WriteOptions {
+  action: "append" | "update" | "batch_update_status";
+  id?: number;
+  data?: any;
+  ids?: number[]; // Untuk batch update
+  status?: string; // Untuk batch update
 }
 
 export async function writeGoogleSheet(
   sheetName: string,
-  data: SheetRow | { action: string; id?: string | number; data?: SheetRow }
-): Promise<{ success: boolean; message: string }> {
+  options: WriteOptions
+): Promise<{ success: boolean; message?: string }> {
   try {
-    if (!APPS_SCRIPT_URL) {
-      return { success: false, message: "Apps Script URL not configured" };
+    if (!SPREADSHEET_ID) {
+      throw new Error("Spreadsheet ID not configured");
     }
+    const { action, data } = options;
 
-    let payload: unknown;
-    if ("action" in data) {
-      payload = { sheetName, ...data };
-    } else {
-      payload = { action: "append", sheetName, data };
-    }
-
-    const response = await axios.post(APPS_SCRIPT_URL, payload, {
-      headers: { "Content-Type": "application/json" },
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!1:1`,
     });
+    const headers = headerResponse.data.values?.[0];
+    if (!headers) throw new Error(`Headers not found in sheet: ${sheetName}`);
 
-    if (response.data.success) {
-      return { success: true, message: "Operasi berhasil" };
-    } else {
-      return {
-        success: false,
-        message: response.data.error || "Gagal menulis data",
-      };
+    const allData = await readGoogleSheet<WargaData>(sheetName);
+
+    if (action === "append") {
+      const maxId = Math.max(0, ...allData.map((item) => item.id || 0));
+      const newRowData = { ...data, id: maxId + 1 };
+      const newRow = headers.map((header) =>
+        newRowData[header] !== undefined ? newRowData[header] : ""
+      );
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [newRow] },
+      });
+      return { success: true };
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+    if (action === "update" && options.id) {
+      const idColIndex = headers.indexOf("id");
+      const rowIndexToUpdate =
+        allData.findIndex((row) => row.id === options.id) + 2; // +2 karena index 1-based dan ada header
+
+      if (rowIndexToUpdate < 2)
+        return { success: false, message: "ID not found" };
+
+      const existingRow = allData[rowIndexToUpdate - 2];
+      const updatedRow = headers.map((header) =>
+        data[header] !== undefined ? data[header] : existingRow[header]
+      );
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!A${rowIndexToUpdate}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [updatedRow] },
+      });
+      return { success: true };
+    }
+
+    if (
+      action === "batch_update_status" &&
+      options.ids &&
+      options.ids.length > 0
+    ) {
+      const idColIndex = headers.indexOf("id");
+      const statusColIndex = headers.indexOf("status_aktif");
+      const updatedAtIndex = headers.indexOf("updated_at");
+
+      if (idColIndex === -1 || statusColIndex === -1) {
+        return {
+          success: false,
+          message: "Required columns ('id', 'status_aktif') not found.",
+        };
+      }
+
+      const dataForUpdate: { range: string; values: any[][] }[] = [];
+      const now = new Date().toISOString();
+
+      options.ids.forEach((id) => {
+        const rowIndex = allData.findIndex((row) => row.id === id) + 2;
+        if (rowIndex >= 2) {
+          const existingRow = allData[rowIndex - 2];
+          const newRow = [...headers.map((h) => existingRow[h] || "")]; // Buat baris baru berdasarkan data yang ada
+          newRow[statusColIndex] = options.status || "Non-Aktif";
+          if (updatedAtIndex !== -1) newRow[updatedAtIndex] = now;
+
+          dataForUpdate.push({
+            range: `${sheetName}!A${rowIndex}`,
+            values: [newRow],
+          });
+        }
+      });
+
+      if (dataForUpdate.length > 0) {
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          requestBody: {
+            valueInputOption: "USER_ENTERED",
+            data: dataForUpdate,
+          },
+        });
+      }
+      return { success: true };
+    }
+
+    return { success: false, message: "Invalid action or options" };
   } catch (error) {
-    return { success: false, message: "Internal server error" };
+    console.error(`Error writing to sheet ${sheetName}:`, error);
+    return { success: false, message: "Failed to update Google Sheets." };
   }
-}
-export async function postSheetData(): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  console.warn(
-    "Write operations are no longer supported via Google Sheets API"
-  );
-  console.warn("Please use the admin dashboard for data management");
-
-  return {
-    success: false,
-    message: "Write operations not supported. Please use admin dashboard.",
-  };
-}
-
-export async function updateGoogleSheet(
-  sheetName: string,
-  id: string | number,
-  dataToUpdate: Partial<AccountData>
-): Promise<{ success: boolean; message: string }> {
-  try {
-    if (!APPS_SCRIPT_URL) {
-      return { success: false, message: "Apps Script URL not configured" };
-    }
-
-    const payload = {
-      action: "update",
-      sheetName,
-      id,
-      data: dataToUpdate,
-    };
-
-    const response = await axios.post(APPS_SCRIPT_URL, payload, {
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (response.data.success) {
-      return { success: true, message: "Operasi berhasil" };
-    } else {
-      return {
-        success: false,
-        message: response.data.error || "Gagal update data",
-      };
-    }
-  } catch (error) {
-    console.error("Error in updateGoogleSheet:", error);
-    return { success: false, message: "Internal server error" };
-  }
-}
-
-export async function deleteGoogleSheet(): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  return { success: false, message: "Write operations not supported" };
 }

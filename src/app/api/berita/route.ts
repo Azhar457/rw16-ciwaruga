@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet } from "@/lib/googleSheets";
+import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 interface BeritaData {
@@ -19,8 +19,7 @@ interface BeritaData {
 
 export async function GET() {
   try {
-    const beritaData = (await readGoogleSheet("berita")) as BeritaData[];
-
+    const beritaData = await readGoogleSheet<any>("berita");
     const publishedBerita = beritaData
       .filter((berita) => berita.status_publish === "Published")
       .sort(
@@ -28,7 +27,6 @@ export async function GET() {
           new Date(b.published_at).getTime() -
           new Date(a.published_at).getTime()
       );
-
     return NextResponse.json(publishedBerita);
   } catch (error) {
     console.error("Error fetching berita:", error);
@@ -42,27 +40,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request);
-
     if (
       !session ||
-      !["admin_bph", "admin_rw"].includes(session.role)
+      !["admin_bph", "admin_rw", "ketua_rw"].includes(session.role)
     ) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
-
     const newBerita = await request.json();
-    const beritaData = (await readGoogleSheet("berita")) as BeritaData[];
-
-    const maxId = Math.max(...beritaData.map((b) => b.id), 0);
-
     const statusPublish = session.role === "ketua_rw" ? "Published" : "Pending";
-
     const beritaToAdd = {
       ...newBerita,
-      id: maxId + 1,
       penulis: session.nama_lengkap,
       status_publish: statusPublish,
       views: 0,
@@ -72,15 +62,20 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+    const result = await writeGoogleSheet("berita", {
+      action: "append",
+      data: beritaToAdd,
+    });
+    if (!result.success) throw new Error(result.message);
     return NextResponse.json({
       success: true,
       message: "Berita berhasil ditambahkan",
       data: beritaToAdd,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding berita:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }
