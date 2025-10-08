@@ -44,7 +44,7 @@ export default function Toast({
   message,
   type,
   onClose,
-  duration = 5000,
+  duration = 30000,
 }: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -61,7 +61,7 @@ export default function Toast({
 
   return (
     <div
-      className={`max-w-sm w-full rounded-lg shadow-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4 ${config.bg} ${config.border} transform transition-all animate-toast-in`}
+      className={`max-w-xl w-full rounded-lg shadow-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4 ${config.bg} ${config.border} transform transition-all animate-toast-in`}
     >
       <div className="p-4 flex items-start">
         <div className="flex-shrink-0">{config.icon}</div>

@@ -10,7 +10,7 @@ import {
 import Toast, { ToastProps, ToastType } from "./Toast";
 
 interface ToastContextType {
-  addToast: (message: string, type: ToastType) => void;
+  addToast: (message: string, type: ToastType, duration?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -24,12 +24,20 @@ export function useToast() {
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  // Gunakan Omit untuk menghilangkan onClose dari tipe state
   const [toasts, setToasts] = useState<Omit<ToastProps, "onClose">[]>([]);
 
-  const addToast = useCallback((message: string, type: ToastType) => {
-    const id = new Date().toISOString(); // Simple unique ID
-    setToasts((prevToasts) => [...prevToasts, { id, message, type }]);
-  }, []);
+  const addToast = useCallback(
+    (message: string, type: ToastType, duration?: number) => {
+      // Gunakan timestamp sebagai ID unik yang sederhana
+      const id = `toast-${Date.now()}`;
+      setToasts((prevToasts) => [
+        ...prevToasts,
+        { id, message, type, duration },
+      ]);
+    },
+    []
+  );
 
   const removeToast = useCallback((id: string) => {
     setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
@@ -38,10 +46,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed top-5 right-5 z-[100] space-y-3">
-        {toasts.map((toast) => (
-          <Toast key={toast.id} {...toast} onClose={removeToast} />
-        ))}
+      {/* Wadah untuk semua notifikasi toast */}
+      <div
+        aria-live="assertive"
+        className="pointer-events-none fixed inset-0 z-[100] flex items-end px-4 py-6 sm:items-start sm:p-6"
+      >
+        <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+          {toasts.map((toast) => (
+            <Toast key={toast.id} {...toast} onClose={removeToast} />
+          ))}
+        </div>
       </div>
     </ToastContext.Provider>
   );

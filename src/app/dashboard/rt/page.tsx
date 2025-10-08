@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FaUsers,
@@ -15,7 +15,7 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/ToastProvider";
 
-// ... (Interface tetap sama)
+// Interface untuk data sesi pengguna
 interface SessionUser {
   id: number;
   email: string;
@@ -25,6 +25,7 @@ interface SessionUser {
   rw_akses: string;
 }
 
+// Interface untuk data warga yang diterima dari API
 interface WargaData {
   id: number;
   nik_encrypted?: string;
@@ -47,9 +48,10 @@ interface WargaData {
   created_at?: string;
   updated_at?: string;
   last_verified?: string;
-  [key: string]: any; // Menambahkan index signature
+  [key: string]: any; // Index signature untuk akses dinamis
 }
 
+// Interface untuk data form
 interface WargaFormData {
   nama: string;
   jenis_kelamin: string;
@@ -67,46 +69,13 @@ interface WargaFormData {
   no_hp: string;
   status_aktif: string;
 }
+
 export default function RTDashboard() {
-  const { addToast } = useToast(); // 2. Panggil hook di dalam komponen
+  const { addToast } = useToast();
   const router = useRouter();
-
-  function formatPhoneNumber(phone: string | undefined | null): string {
-    if (!phone) return "";
-    const phoneStr = String(phone);
-    let cleaned = phoneStr.replace(/\D/g, "");
-    if (cleaned.startsWith("62")) {
-      cleaned = "0" + cleaned.substring(2);
-    }
-    if (!cleaned.startsWith("0")) {
-      cleaned = "0" + cleaned;
-    }
-    if (cleaned.length < 10 || cleaned.length > 13) {
-      return phoneStr;
-    }
-    return cleaned;
-  }
-
-  const parseDateString = (dateStr: string): string => {
-    if (!dateStr || typeof dateStr !== "string") return "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return dateStr;
-    }
-    const parts = dateStr.split("/");
-    if (parts.length === 3) {
-      const [day, month, year] = parts;
-      if (day && month && year && year.length === 4) {
-        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-      }
-    }
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
-      return d.toISOString().split("T")[0];
-    }
-    return "";
-  };
-  // 2. Buat ref untuk checkbox "select all"
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  // States
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -118,6 +87,7 @@ export default function RTDashboard() {
   const [editingWarga, setEditingWarga] = useState<WargaData | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
+  // State untuk form tambah/edit
   const [formData, setFormData] = useState<WargaFormData>({
     nama: "",
     jenis_kelamin: "",
@@ -125,7 +95,7 @@ export default function RTDashboard() {
     tanggal_lahir: "",
     alamat: "",
     rt: "",
-    rw: "16",
+    rw: "",
     kelurahan: "Ciwaruga",
     kecamatan: "Bandung",
     agama: "",
@@ -135,70 +105,40 @@ export default function RTDashboard() {
     no_hp: "",
     status_aktif: "Aktif",
   });
-
-  const fetchData = async () => {
-    setIsRefreshing(true);
-    try {
-      const wargaRes = await fetch(`/api/warga`);
-      if (!wargaRes.ok) throw new Error("Gagal mengambil data warga");
-      const response = await wargaRes.json();
-      if (response.success && Array.isArray(response.data)) {
-        setWargaList(response.data);
-      } else {
-        throw new Error("Format data tidak sesuai");
-      }
-    } catch (error) {
-      console.error("Error fetching warga data:", error);
-      setWargaList([]);
-    } finally {
-      setIsRefreshing(false);
-    }
+  // Helper Functions
+  const formatPhoneNumber = (phone: string | undefined | null): string => {
+    if (!phone) return "";
+    let cleaned = String(phone).replace(/\D/g, "");
+    if (cleaned.startsWith("62")) cleaned = "0" + cleaned.substring(2);
+    if (!cleaned.startsWith("0")) cleaned = "0" + cleaned;
+    return cleaned;
   };
 
-  useEffect(() => {
-    async function initData() {
-      try {
-        const sessionRes = await fetch("/api/auth/session");
-        if (!sessionRes.ok) {
-          router.push("/auth/login");
-          return;
-        }
-        const sessionData = await sessionRes.json();
-        if (
-          !sessionData.success ||
-          !sessionData.user ||
-          sessionData.user.role !== "ketua_rt"
-        ) {
-          router.push("/auth/login");
-          return;
-        }
-        setSession(sessionData.user);
-        await fetchData();
-      } catch (error) {
-        console.error("Error in initData:", error);
-      } finally {
-        setLoading(false);
+  const parseDateForInput = (dateStr: string): string => {
+    if (!dateStr || typeof dateStr !== "string") return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      if (day && month && year && year.length === 4) {
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
       }
     }
-    initData();
-  }, [router]);
+    const d = new Date(dateStr);
+    return !isNaN(d.getTime()) ? d.toISOString().split("T")[0] : "";
+  };
 
-  // 3. Gunakan useEffect untuk mengatur indeterminate
-  useEffect(() => {
-    if (selectAllCheckboxRef.current) {
-      const isIndeterminate =
-        selectedIds.length > 0 && selectedIds.length < wargaList.length;
-      selectAllCheckboxRef.current.indeterminate = isIndeterminate;
-    }
-  }, [selectedIds, wargaList.length]);
-
+  // Modal and Form Handlers
   const handleOpenModal = (warga: WargaData | null = null) => {
     if (warga) {
       setEditingWarga(warga);
-      const formattedDate = parseDateString(warga.tanggal_lahir);
-      setFormData({ ...warga, tanggal_lahir: formattedDate });
+      setFormData({
+        ...warga,
+        tanggal_lahir: parseDateForInput(warga.tanggal_lahir),
+      });
     } else {
       setEditingWarga(null);
+      // Mengatur default RT/RW sesuai sesi Ketua RT saat ini
       setFormData({
         nama: "",
         jenis_kelamin: "",
@@ -228,8 +168,7 @@ export default function RTDashboard() {
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -266,13 +205,13 @@ export default function RTDashboard() {
         throw new Error(result.message || "Gagal menyimpan data");
       }
     } catch (error: any) {
-      console.error("Error submitting form:", error);
       addToast(`Terjadi kesalahan: ${error.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Batch Deletion and Selection Handlers
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
     if (
@@ -281,6 +220,7 @@ export default function RTDashboard() {
       )
     )
       return;
+
     setIsDeleting(true);
     try {
       const res = await fetch("/api/warga", {
@@ -291,15 +231,14 @@ export default function RTDashboard() {
 
       const result = await res.json();
       if (res.ok && result.success) {
-        addToast(result.message || "Proses selesai");
+        addToast(result.message || "Proses selesai", "success");
         setSelectedIds([]);
         await fetchData();
       } else {
         throw new Error(result.message || "Gagal menghapus data");
       }
     } catch (error: any) {
-      console.error("Error deleting selected warga:", error);
-      addToast(`Terjadi kesalahan: ${error.message}`);
+      addToast(`Terjadi kesalahan: ${error.message}`, "error");
     } finally {
       setIsDeleting(false);
     }
@@ -319,19 +258,83 @@ export default function RTDashboard() {
     }
   };
 
-  async function handleLogout() {
+  // Logout Handler
+  const handleLogout = async () => {
     await fetch("/api/auth/login", { method: "DELETE" });
     router.push("/auth/login");
-  }
+  };
 
-  const displayedWarga = wargaList.filter(
-    (warga) =>
-      warga.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      warga.alamat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      warga.pekerjaan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(warga.no_hp).includes(searchTerm)
+  // Filter data for display
+  const displayedWarga = wargaList.filter((warga) =>
+    Object.values(warga).some((val) =>
+      String(val).toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
+  // Fungsi untuk mengambil data warga dari API
+  const fetchData = async () => {
+    setIsRefreshing(true);
+    try {
+      const wargaRes = await fetch(`/api/warga`);
+      if (!wargaRes.ok) throw new Error("Gagal mengambil data warga");
+      const response = await wargaRes.json();
+      if (response.success && Array.isArray(response.data)) {
+        setWargaList(response.data);
+      } else {
+        throw new Error(response.message || "Format data tidak sesuai");
+      }
+    } catch (error: any) {
+      addToast(`Gagal memuat data: ${error.message}`, "error");
+      setWargaList([]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Efek untuk inisialisasi sesi dan data awal
+  useEffect(() => {
+    async function initData() {
+      try {
+        const sessionRes = await fetch("/api/auth/session");
+        if (!sessionRes.ok) {
+          router.push("/auth/login");
+          return;
+        }
+        const sessionData = await sessionRes.json();
+        if (
+          !sessionData.success ||
+          !sessionData.user ||
+          sessionData.user.role !== "ketua_rt"
+        ) {
+          router.push("/auth/login");
+          return;
+        }
+        setSession(sessionData.user);
+        await fetchData();
+      } catch (error) {
+        console.error("Error in initData:", error);
+        addToast("Gagal memuat sesi, silakan login kembali.", "error");
+        router.push("/auth/login");
+      } finally {
+        setLoading(false);
+      }
+    }
+    initData();
+  }, [router]);
+
+  // Efek untuk mengatur status indeterminate pada checkbox "select all"
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      const numDisplayed = displayedWarga.length;
+      const numSelected = selectedIds.length;
+      selectAllCheckboxRef.current.checked =
+        numDisplayed > 0 && numSelected === numDisplayed;
+      selectAllCheckboxRef.current.indeterminate =
+        numSelected > 0 && numSelected < numDisplayed;
+    }
+  }, [selectedIds, displayedWarga]);
+
+  // Loading state
   if (loading || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -340,6 +343,7 @@ export default function RTDashboard() {
     );
   }
 
+  // Render JSX
   return (
     <main className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -374,11 +378,11 @@ export default function RTDashboard() {
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
             <h2 className="text-xl font-semibold text-gray-800">
               Data Warga RT {session.rt_akses}
             </h2>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {selectedIds.length > 0 && (
                 <Button
                   onClick={handleDeleteSelected}
@@ -397,7 +401,7 @@ export default function RTDashboard() {
                 onClick={() => handleOpenModal()}
                 className="bg-emerald-500 hover:bg-emerald-600 text-white"
               >
-                <FaPlus className="mr-2" /> Tambah Warga
+                <FaPlus className="mr-2" /> Tambah
               </Button>
               <Button
                 onClick={() => fetchData()}
@@ -418,7 +422,7 @@ export default function RTDashboard() {
             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari berdasarkan nama, alamat, atau pekerjaan..."
+              placeholder="Cari data warga..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -431,17 +435,10 @@ export default function RTDashboard() {
                 <tr>
                   <th className="px-6 py-3 text-left">
                     <input
+                      ref={selectAllCheckboxRef}
                       type="checkbox"
                       className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                       onChange={handleSelectAll}
-                      checked={
-                        displayedWarga.length > 0 &&
-                        selectedIds.length === displayedWarga.length
-                      }
-                      indeterminate={
-                        selectedIds.length > 0 &&
-                        selectedIds.length < displayedWarga.length
-                      }
                     />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -452,9 +449,6 @@ export default function RTDashboard() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Pekerjaan
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     No. HP
@@ -490,9 +484,6 @@ export default function RTDashboard() {
                       {warga.status_perkawinan}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {warga.pekerjaan}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatPhoneNumber(warga.no_hp)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -509,7 +500,7 @@ export default function RTDashboard() {
                 {displayedWarga.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={6}
                       className="px-6 py-4 text-center text-gray-500"
                     >
                       {searchTerm
@@ -613,7 +604,9 @@ export default function RTDashboard() {
               </label>
               <input
                 type="text"
-                value="Ciwaruga"
+                name="kelurahan"
+                value={formData.kelurahan}
+                onChange={handleFormChange}
                 className="w-full p-2 border rounded bg-gray-100"
                 readOnly
               />
@@ -624,7 +617,9 @@ export default function RTDashboard() {
               </label>
               <input
                 type="text"
-                value="Bandung"
+                name="kecamatan"
+                value={formData.kecamatan}
+                onChange={handleFormChange}
                 className="w-full p-2 border rounded bg-gray-100"
                 readOnly
               />
@@ -699,7 +694,7 @@ export default function RTDashboard() {
                 value={formData.no_hp}
                 onChange={handleFormChange}
                 pattern="[0-9]*"
-                maxLength={13}
+                maxLength={15}
                 placeholder="Contoh: 08123456789"
                 className="w-full p-2 border rounded"
                 required
