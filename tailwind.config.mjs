@@ -1,4 +1,4 @@
-// postcss.config.mjs
+/** @type {import('tailwindcss').Config} */
 const config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -24,7 +24,7 @@ const config = {
       },
     },
   },
-  plugins: ["@tailwindcss/postcss"],
+  plugins: [],
 };
 
 export default config;
