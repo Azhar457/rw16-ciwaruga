@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check subscription
     if (!isSubscriptionActive(user)) {
       return NextResponse.json(
         { success: false, message: "Subscription inactive or expired" },
@@ -31,16 +30,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // PERUBAHAN DI SINI: Tambahkan 'true' untuk bypass cache internal
-    const allWargaData = await readGoogleSheet<WargaData>("warga", true);
+    const allWargaData = await readGoogleSheet<WargaData>("warga");
 
-    // Filter data based on RT/RW access dan status aktif
-    const filteredData = allWargaData.filter(
-      (warga: WargaData) =>
-        String(warga.rt) === String(user.rt_akses) &&
-        String(warga.rw) === String(user.rw_akses) &&
-        warga.status_aktif === "Aktif"
-    );
+    let filteredData: WargaData[];
+
+    if (["admin", "super_admin", "developer"].includes(user.role)) {
+      // Admin level atas dapat melihat semua warga yang aktif
+      filteredData = allWargaData.filter(
+        (warga) => warga.status_aktif === "Aktif"
+      );
+    } else if (["ketua_rw", "admin_rw"].includes(user.role)) {
+      // Ketua/Admin RW dapat melihat semua warga aktif di RW-nya
+      filteredData = allWargaData.filter(
+        (warga) =>
+          String(warga.rw) === String(user.rw_akses) &&
+          warga.status_aktif === "Aktif"
+      );
+    } else {
+      // Role lain (seperti ketua_rt) hanya bisa melihat RT-nya sendiri
+      filteredData = allWargaData.filter(
+        (warga) =>
+          String(warga.rt) === String(user.rt_akses) &&
+          String(warga.rw) === String(user.rw_akses) &&
+          warga.status_aktif === "Aktif"
+      );
+    }
 
     return NextResponse.json({
       success: true,

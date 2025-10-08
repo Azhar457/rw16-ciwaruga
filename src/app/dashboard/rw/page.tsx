@@ -2,7 +2,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { decrypt } from "@/lib/encrypt";
 import { readGoogleSheet } from "@/lib/googleSheets";
-// --- PERBAIKAN DI SINI: Pastikan nama file impornya sama persis ---
 import RwDashboardClient from "@/components/dashboard/rwdashboardclient"; 
 import { SessionUser, WargaData } from '@/lib/auth';
 
@@ -22,8 +21,9 @@ async function getServerSession(): Promise<SessionUser | null> {
 async function getWargaForRw(rw: string): Promise<WargaData[]> {
     try {
         const allWarga = await readGoogleSheet<WargaData>("warga");
-        // Filter di server untuk efisiensi
-        return allWarga.filter(warga => warga.rw === rw);
+        // --- PERBAIKAN DI SINI ---
+        // Pastikan perbandingan dilakukan sebagai string untuk menghindari error tipe data
+        return allWarga.filter(warga => String(warga.rw) === String(rw));
     } catch (error) {
         console.error("Failed to fetch warga data on server:", error);
         return [];
@@ -39,7 +39,7 @@ export default async function RWDashboardPage() {
         redirect('/auth/login');
     }
 
-    // 2. Ambil data warga di server
+    // 2. Ambil data warga di server (sekarang dengan filter yang benar)
     const wargaData = await getWargaForRw(session.rw_akses);
 
     // 3. Render Client Component dan kirim data sebagai props
