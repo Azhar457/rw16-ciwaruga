@@ -1,9 +1,9 @@
 // src/lib/googleSheets.ts
 import { google } from "googleapis";
 import path from "path";
-import { WargaData } from "./auth";
+import { WargaData } from "./auth"; // Pastikan path ini benar
 
-const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
+const SPREADSHEET_ID = process.env.SHEET_ID;
 
 // Otentikasi menggunakan service account
 const auth = new google.auth.GoogleAuth({
@@ -14,49 +14,60 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: "v4", auth });
 
 // Helper untuk mengubah array data menjadi objek
-const rowsToObjects = (headers: any[], rows: any[][]) => {
+const rowsToObjects = (headers: any[], rows: any[][]): any[] => {
   return rows.map((row) => {
     const obj: { [key: string]: any } = {};
     headers.forEach((header, i) => {
-      obj[header] = row[i] || "";
+      const value = row[i];
+      // Konversi ke angka jika memungkinkan, dengan pengecualian untuk nomor telepon
+      if (header !== "no_hp" && value !== "" && !isNaN(Number(value))) {
+        obj[header] = Number(value);
+      } else {
+        obj[header] = value !== null && value !== undefined ? value : "";
+      }
     });
     return obj;
   });
 };
 
-// Fungsi Baru: readGoogleSheet
 export async function readGoogleSheet<T>(sheetName: string): Promise<T[]> {
   try {
+    if (!SPREADSHEET_ID) {
+      throw new Error("Spreadsheet ID not configured");
+    }
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: sheetName,
     });
 
     const rows = response.data.values;
-    if (!rows || rows.length === 0) return [];
+    if (!rows || rows.length <= 1) return [];
 
     const headers = rows.shift() || [];
     return rowsToObjects(headers, rows) as T[];
   } catch (error) {
     console.error(`Error reading from sheet ${sheetName}:`, error);
-    throw new Error("Failed to retrieve data from Google Sheets.");
+    // Kembalikan array kosong agar aplikasi tidak crash
+    return [];
   }
 }
 
 interface WriteOptions {
   action: "append" | "update" | "batch_update_status";
-  id?: number | number[]; // Bisa satu ID atau array ID
+  id?: number;
   data?: any;
   ids?: number[]; // Untuk batch update
   status?: string; // Untuk batch update
 }
 
-// Fungsi Baru: writeGoogleSheet (dengan kemampuan batch)
 export async function writeGoogleSheet(
   sheetName: string,
   options: WriteOptions
 ): Promise<{ success: boolean; message?: string }> {
   try {
+    if (!SPREADSHEET_ID) {
+      throw new Error("Spreadsheet ID not configured");
+    }
     const { action, data } = options;
 
     const headerResponse = await sheets.spreadsheets.values.get({
@@ -66,14 +77,14 @@ export async function writeGoogleSheet(
     const headers = headerResponse.data.values?.[0];
     if (!headers) throw new Error(`Headers not found in sheet: ${sheetName}`);
 
-    if (action === "append") {
-      const allData = await readGoogleSheet<WargaData>(sheetName);
-      const maxId = Math.max(0, ...allData.map((item) => item.id || 0));
+    const allData = await readGoogleSheet<WargaData>(sheetName);
 
-      const newRow = headers.map((header) => {
-        if (header === "id") return maxId + 1;
-        return data[header] !== undefined ? data[header] : "";
-      });
+    if (action === "append") {
+      const maxId = Math.max(0, ...allData.map((item) => item.id || 0));
+      const newRowData = { ...data, id: maxId + 1 };
+      const newRow = headers.map((header) =>
+        newRowData[header] !== undefined ? newRowData[header] : ""
+      );
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
@@ -84,28 +95,22 @@ export async function writeGoogleSheet(
       return { success: true };
     }
 
-    if (action === "update" && options.id && typeof options.id === "number") {
-      const allValues = await sheets.spreadsheets.values
-        .get({
-          spreadsheetId: SPREADSHEET_ID,
-          range: sheetName,
-        })
-        .then((res) => res.data.values || []);
-
+    if (action === "update" && options.id) {
       const idColIndex = headers.indexOf("id");
-      const rowIndex = allValues.findIndex(
-        (row) => String(row[idColIndex]) === String(options.id)
-      );
+      const rowIndexToUpdate =
+        allData.findIndex((row) => row.id === options.id) + 2; // +2 karena index 1-based dan ada header
 
-      if (rowIndex === -1) return { success: false, message: "ID not found" };
+      if (rowIndexToUpdate < 2)
+        return { success: false, message: "ID not found" };
 
-      const updatedRow = headers.map((header, index) =>
-        data[header] !== undefined ? data[header] : allValues[rowIndex][index]
+      const existingRow = allData[rowIndexToUpdate - 2];
+      const updatedRow = headers.map((header) =>
+        data[header] !== undefined ? data[header] : existingRow[header]
       );
 
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!A${rowIndex + 1}`,
+        range: `${sheetName}!A${rowIndexToUpdate}`,
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [updatedRow] },
       });
@@ -117,13 +122,6 @@ export async function writeGoogleSheet(
       options.ids &&
       options.ids.length > 0
     ) {
-      const allValues = await sheets.spreadsheets.values
-        .get({
-          spreadsheetId: SPREADSHEET_ID,
-          range: sheetName,
-        })
-        .then((res) => res.data.values || []);
-
       const idColIndex = headers.indexOf("id");
       const statusColIndex = headers.indexOf("status_aktif");
       const updatedAtIndex = headers.indexOf("updated_at");
@@ -139,16 +137,15 @@ export async function writeGoogleSheet(
       const now = new Date().toISOString();
 
       options.ids.forEach((id) => {
-        const rowIndex = allValues.findIndex(
-          (row) => String(row[idColIndex]) === String(id)
-        );
-        if (rowIndex !== -1) {
-          const newRow = [...allValues[rowIndex]];
+        const rowIndex = allData.findIndex((row) => row.id === id) + 2;
+        if (rowIndex >= 2) {
+          const existingRow = allData[rowIndex - 2];
+          const newRow = [...headers.map((h) => existingRow[h] || "")]; // Buat baris baru berdasarkan data yang ada
           newRow[statusColIndex] = options.status || "Non-Aktif";
           if (updatedAtIndex !== -1) newRow[updatedAtIndex] = now;
 
           dataForUpdate.push({
-            range: `${sheetName}!A${rowIndex + 1}`,
+            range: `${sheetName}!A${rowIndex}`,
             values: [newRow],
           });
         }

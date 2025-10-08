@@ -13,6 +13,9 @@ import {
 import LoadingSpinner from "@/components/ui/loadingSpinner";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/ToastProvider";
+
+// ... (Interface tetap sama)
 interface SessionUser {
   id: number;
   email: string;
@@ -63,127 +66,43 @@ interface WargaFormData {
   no_hp: string;
   status_aktif: string;
 }
-
 export default function RTDashboard() {
-  // -----------------------------------------------------------------
-  // Helper functions
-  // -----------------------------------------------------------------
+  const { addToast } = useToast(); // 2. Panggil hook di dalam komponen
   function formatPhoneNumber(phone: string | undefined | null): string {
-    // Handle undefined/null case
     if (!phone) return "";
-
-    // Ensure phone is string
     const phoneStr = String(phone);
-
-    // Remove all non-numeric characters
     let cleaned = phoneStr.replace(/\D/g, "");
-
-    // Handle 62/+62 prefix
     if (cleaned.startsWith("62")) {
       cleaned = "0" + cleaned.substring(2);
     }
-
-    // Handle if number doesn't start with 0
     if (!cleaned.startsWith("0")) {
       cleaned = "0" + cleaned;
     }
-
-    // Validate length (Indonesian numbers are 10-13 digits)
     if (cleaned.length < 10 || cleaned.length > 13) {
-      return phoneStr; // Return original if invalid
+      return phoneStr;
     }
-
     return cleaned;
   }
 
-  function formatDate(dateString: string): string {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    // Format as DD/MM/YYYY
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
-
-  // FUNGSI BARU untuk mem-parse tanggal DD/MM/YYYY
   const parseDateString = (dateStr: string): string => {
     if (!dateStr || typeof dateStr !== "string") return "";
-    // Cek jika sudah dalam format YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return dateStr;
     }
-    // Cek jika format DD/MM/YYYY
     const parts = dateStr.split("/");
     if (parts.length === 3) {
       const [day, month, year] = parts;
-      // Pastikan semua bagian valid sebelum digabungkan
       if (day && month && year && year.length === 4) {
         return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
       }
     }
-    // Jika format lain atau tidak valid, coba parse langsung (fallback)
     const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
       return d.toISOString().split("T")[0];
     }
-    return ""; // Kembalikan string kosong jika tidak valid
+    return "";
   };
 
-  // Tambahkan state untuk seleksi batch
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-
-  // Fungsi untuk menangani seleksi checkbox
-  const handleSelect = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(displayedWarga.map((w) => w.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  // Fungsi untuk batch delete
-  const handleDeleteSelected = async () => {
-    if (selectedIds.length === 0) return;
-    if (
-      !confirm(
-        `Apakah Anda yakin ingin menghapus ${selectedIds.length} data yang dipilih?`
-      )
-    )
-      return;
-    setIsDeleting(true);
-    try {
-      const res = await fetch("/api/warga", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedIds }), // Kirim array ids
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        alert(result.message || "Proses selesai");
-        setSelectedIds([]); // Kosongkan seleksi
-        await fetchData();
-      } else {
-        const error = await res.json();
-        throw new Error(error.message || "Gagal menghapus data");
-      }
-    } catch (error) {
-      console.error("Error deleting selected warga:", error);
-      alert("Terjadi kesalahan saat menghapus data");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // State
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -193,6 +112,7 @@ export default function RTDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWarga, setEditingWarga] = useState<WargaData | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const router = useRouter();
 
   const [formData, setFormData] = useState<WargaFormData>({
@@ -232,10 +152,37 @@ export default function RTDashboard() {
     }
   };
 
+  useEffect(() => {
+    async function initData() {
+      try {
+        const sessionRes = await fetch("/api/auth/session");
+        if (!sessionRes.ok) {
+          router.push("/auth/login");
+          return;
+        }
+        const sessionData = await sessionRes.json();
+        if (
+          !sessionData.success ||
+          !sessionData.user ||
+          sessionData.user.role !== "ketua_rt"
+        ) {
+          router.push("/auth/login");
+          return;
+        }
+        setSession(sessionData.user);
+        await fetchData();
+      } catch (error) {
+        console.error("Error in initData:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    initData();
+  }, [router]);
+
   const handleOpenModal = (warga: WargaData | null = null) => {
     if (warga) {
       setEditingWarga(warga);
-      // GUNAKAN FUNGSI BARU DI SINI
       const formattedDate = parseDateString(warga.tanggal_lahir);
       setFormData({ ...warga, tanggal_lahir: formattedDate });
     } else {
@@ -277,7 +224,6 @@ export default function RTDashboard() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Saat mengirim, ubah kembali format tanggal ke DD/MM/YYYY jika diperlukan oleh backend
     const [year, month, day] = formData.tanggal_lahir.split("-");
     const submissionData = {
       ...formData,
@@ -293,57 +239,73 @@ export default function RTDashboard() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submissionData), // Kirim data dengan format tanggal yang benar
+        body: JSON.stringify(submissionData),
       });
 
-      if (res.ok) {
-        const result = await res.json();
-        if (result.success) {
-          handleCloseModal();
-          await fetchData();
-          alert(
-            `Data warga berhasil ${editingWarga ? "diperbarui" : "ditambahkan"}`
-          );
-        } else {
-          alert(result.message || "Gagal menyimpan data");
-        }
+      const result = await res.json();
+      if (res.ok && result.success) {
+        handleCloseModal();
+        await fetchData();
+        addToast(
+          `Data warga berhasil ${editingWarga ? "diperbarui" : "ditambahkan"}`,
+          "success"
+        );
       } else {
-        throw new Error("Gagal menyimpan data warga");
+        throw new Error(result.message || "Gagal menyimpan data");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
-      alert("Terjadi kesalahan saat menyimpan data");
+      addToast(`Terjadi kesalahan: ${error.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
-  useEffect(() => {
-    async function initData() {
-      try {
-        const sessionRes = await fetch("/api/auth/session");
-        if (!sessionRes.ok) {
-          router.push("/auth/login");
-          return;
-        }
-        const sessionData = await sessionRes.json();
-        if (
-          !sessionData.success ||
-          !sessionData.user ||
-          sessionData.user.role !== "ketua_rt"
-        ) {
-          router.push("/auth/login");
-          return;
-        }
-        setSession(sessionData.user);
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menghapus ${selectedIds.length} data yang dipilih?`
+      )
+    )
+      return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/warga", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        addToast(result.message || "Proses selesai");
+        setSelectedIds([]);
         await fetchData();
-      } catch (error) {
-        console.error("Error in initData:", error);
-      } finally {
-        setLoading(false);
+      } else {
+        throw new Error(result.message || "Gagal menghapus data");
       }
+    } catch (error: any) {
+      console.error("Error deleting selected warga:", error);
+      addToast(`Terjadi kesalahan: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
-    initData();
-  }, [router]);
+  };
+
+  const handleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(displayedWarga.map((w) => w.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
 
   async function handleLogout() {
     await fetch("/api/auth/login", { method: "DELETE" });
@@ -355,8 +317,9 @@ export default function RTDashboard() {
       warga.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       warga.alamat.toLowerCase().includes(searchTerm.toLowerCase()) ||
       warga.pekerjaan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      warga.no_hp.includes(searchTerm)
+      String(warga.no_hp).includes(searchTerm)
   );
+
   if (loading || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -368,7 +331,6 @@ export default function RTDashboard() {
   return (
     <main className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header Dashboard */}
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-lg p-6 mb-6 shadow-lg text-white">
           <div className="flex justify-between items-center">
             <div>
@@ -385,28 +347,26 @@ export default function RTDashboard() {
           </div>
         </div>
 
-        {/* Kartu Statistik */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
             <div className="bg-blue-100 text-blue-600 p-4 rounded-full">
               <FaUsers size={24} />
             </div>
             <div className="ml-4">
-              <p className="text-gray-500">Total Warga</p>
+              <p className="text-gray-500">Total Warga Aktif</p>
               <p className="text-2xl font-bold text-gray-800">
                 {wargaList.length}
               </p>
             </div>
           </div>
         </div>
-        {/* Area Manajemen Warga */}
+
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-800">
               Data Warga RT {session.rt_akses}
             </h2>
             <div className="flex items-center gap-4">
-              {/* Tombol Batch Delete */}
               {selectedIds.length > 0 && (
                 <Button
                   onClick={handleDeleteSelected}
@@ -453,7 +413,6 @@ export default function RTDashboard() {
             />
           </div>
 
-          {/* Tabel Data Warga dengan Checkbox */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -464,8 +423,12 @@ export default function RTDashboard() {
                       className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                       onChange={handleSelectAll}
                       checked={
-                        selectedIds.length > 0 &&
+                        displayedWarga.length > 0 &&
                         selectedIds.length === displayedWarga.length
+                      }
+                      indeterminate={
+                        selectedIds.length > 0 &&
+                        selectedIds.length < displayedWarga.length
                       }
                     />
                   </th>
@@ -490,49 +453,48 @@ export default function RTDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {displayedWarga.length > 0 ? (
-                  displayedWarga.map((warga) => (
-                    <tr
-                      key={warga.id}
-                      className={`hover:bg-gray-50 ${
-                        selectedIds.includes(warga.id) ? "bg-emerald-50" : ""
-                      }`}
-                    >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                          checked={selectedIds.includes(warga.id)}
-                          onChange={() => handleSelect(warga.id)}
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {warga.nama}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {warga.alamat}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {warga.status_perkawinan}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {warga.pekerjaan}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {warga.no_hp}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleOpenModal(warga)}
-                          className="text-blue-600 hover:text-blue-900"
-                          disabled={isSubmitting}
-                        >
-                          <FaEdit />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
+                {displayedWarga.map((warga) => (
+                  <tr
+                    key={warga.id}
+                    className={`hover:bg-gray-50 ${
+                      selectedIds.includes(warga.id) ? "bg-emerald-50" : ""
+                    }`}
+                  >
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        checked={selectedIds.includes(warga.id)}
+                        onChange={() => handleSelect(warga.id)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {warga.nama}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {warga.alamat}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {warga.status_perkawinan}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {warga.pekerjaan}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatPhoneNumber(warga.no_hp)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleOpenModal(warga)}
+                        className="text-blue-600 hover:text-blue-900"
+                        disabled={isSubmitting}
+                      >
+                        <FaEdit />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {displayedWarga.length === 0 && (
                   <tr>
                     <td
                       colSpan={7}
@@ -550,7 +512,6 @@ export default function RTDashboard() {
         </div>
       </div>
 
-      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -559,7 +520,6 @@ export default function RTDashboard() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nama */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Nama Lengkap
@@ -573,7 +533,6 @@ export default function RTDashboard() {
                 required
               />
             </div>
-            {/* Jenis Kelamin */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Jenis Kelamin
@@ -590,7 +549,6 @@ export default function RTDashboard() {
                 <option value="Perempuan">Perempuan</option>
               </select>
             </div>
-            {/* Tempat Lahir */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Tempat Lahir
@@ -604,7 +562,6 @@ export default function RTDashboard() {
                 required
               />
             </div>
-            {/* Tanggal Lahir */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Tanggal Lahir
@@ -618,7 +575,6 @@ export default function RTDashboard() {
                 required
               />
             </div>
-            {/* Alamat */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Alamat</label>
               <input
@@ -630,7 +586,6 @@ export default function RTDashboard() {
                 required
               />
             </div>
-            {/* RT/RW, Kelurahan, Kecamatan (read-only) */}
             <div>
               <label className="block text-sm font-medium mb-1">RT/RW</label>
               <input
@@ -662,7 +617,6 @@ export default function RTDashboard() {
                 readOnly
               />
             </div>
-            {/* Agama */}
             <div>
               <label className="block text-sm font-medium mb-1">Agama</label>
               <select
@@ -681,7 +635,6 @@ export default function RTDashboard() {
                 <option value="Konghucu">Konghucu</option>
               </select>
             </div>
-            {/* Status Perkawinan */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Status Perkawinan
@@ -700,7 +653,6 @@ export default function RTDashboard() {
                 <option value="Cerai Mati">Cerai Mati</option>
               </select>
             </div>
-            {/* Pekerjaan */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Pekerjaan
@@ -714,7 +666,6 @@ export default function RTDashboard() {
                 required
               />
             </div>
-            {/* Kewarganegaraan */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Kewarganegaraan
@@ -728,7 +679,6 @@ export default function RTDashboard() {
                 required
               />
             </div>
-            {/* No. HP */}
             <div>
               <label className="block text-sm font-medium mb-1">No. HP</label>
               <input

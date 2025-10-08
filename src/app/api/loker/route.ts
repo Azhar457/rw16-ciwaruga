@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  readGoogleSheet,
-  writeGoogleSheet,
-  SheetRow,
-} from "@/lib/googleSheets";
+import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
 const headers = [
@@ -27,25 +23,25 @@ const headers = [
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
-    const lokerData: SheetRow[] = await readGoogleSheet("loker");
-
-    if (session && ["admin", "super_admin"].includes(session.role)) {
+    const lokerData = await readGoogleSheet<any>("loker");
+    if (
+      session &&
+      ["admin", "super_admin", "admin_rw"].includes(session.role)
+    ) {
       return NextResponse.json(lokerData);
     } else {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
       const activeLoker = lokerData.filter((loker) => {
         const isActive = loker.status_aktif === "Aktif";
         const deadlineDate = new Date(loker.deadline as string);
         deadlineDate.setHours(0, 0, 0, 0);
-        const notExpired = deadlineDate >= today;
-        return isActive && notExpired;
+        return isActive && deadlineDate >= today;
       });
-
       return NextResponse.json(activeLoker);
     }
-  } catch {
+  } catch (error) {
+    console.error("Error fetching loker:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
@@ -56,37 +52,25 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const newLoker = await request.json();
-    const lokerData: SheetRow[] = await readGoogleSheet("loker");
-    const maxId = Math.max(
-      ...lokerData.map((l: SheetRow) => Number(l.id) || 0),
-      0
-    );
-
-    const lokerToAdd: Record<string, string | number> = {};
-    headers.forEach((h) => {
-      lokerToAdd[h] =
-        h === "id"
-          ? maxId + 1
-          : h === "created_at" || h === "updated_at"
-          ? new Date().toISOString()
-          : newLoker[h] ?? "";
-    });
-
-    const writeResult = await writeGoogleSheet("loker", lokerToAdd);
-    if (!writeResult.success) {
-      return NextResponse.json(
-        { success: false, message: writeResult.message },
-        { status: 500 }
-      );
-    }
-    return NextResponse.json({
-      success: true,
-      message: "Lowongan kerja berhasil ditambahkan",
+    const lokerToAdd = {
+      ...newLoker,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const result = await writeGoogleSheet("loker", {
+      action: "append",
       data: lokerToAdd,
     });
-  } catch {
+    if (!result.success) throw new Error(result.message);
+    return NextResponse.json({
+      success: true,
+      message: "Lowongan berhasil ditambahkan",
+      data: lokerToAdd,
+    });
+  } catch (error: any) {
+    console.error("Error adding loker:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }
@@ -94,51 +78,32 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const updatedLoker = await request.json();
-    if (!updatedLoker.id) {
+    const { id, ...updateData } = await request.json();
+    if (!id) {
       return NextResponse.json(
         { success: false, message: "ID loker harus disertakan" },
         { status: 400 }
       );
     }
-    const lokerData: SheetRow[] = await readGoogleSheet("loker");
-    const index = lokerData.findIndex(
-      (l: SheetRow) => Number(l.id) === Number(updatedLoker.id)
-    );
-    if (index === -1) {
-      return NextResponse.json(
-        { success: false, message: "Loker tidak ditemukan" },
-        { status: 404 }
-      );
-    }
-
-    const lokerToUpdate: Record<string, string | number> = {};
-    headers.forEach((h) => {
-      lokerToUpdate[h] =
-        h === "updated_at"
-          ? new Date().toISOString()
-          : updatedLoker[h] ?? lokerData[index][h] ?? "";
-    });
-
-    const writeResult = await writeGoogleSheet("loker", {
+    const lokerToUpdate = {
+      ...updateData,
+      updated_at: new Date().toISOString(),
+    };
+    const result = await writeGoogleSheet("loker", {
       action: "update",
-      id: lokerToUpdate.id,
+      id,
       data: lokerToUpdate,
     });
-    if (!writeResult.success) {
-      return NextResponse.json(
-        { success: false, message: writeResult.message },
-        { status: 500 }
-      );
-    }
+    if (!result.success) throw new Error(result.message);
     return NextResponse.json({
       success: true,
-      message: "Lowongan kerja berhasil diperbarui",
-      data: lokerToUpdate,
+      message: "Lowongan berhasil diperbarui",
+      data: { id, ...lokerToUpdate },
     });
-  } catch {
+  } catch (error: any) {
+    console.error("Error updating loker:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }
@@ -146,30 +111,27 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { id } = await request.json();
-    if (!id) {
+    const { ids } = await request.json(); // Menggunakan 'ids' untuk batch delete
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
         { success: false, message: "ID loker harus disertakan" },
         { status: 400 }
       );
     }
-    const writeResult = await writeGoogleSheet("loker", {
-      action: "delete",
-      id,
+    const result = await writeGoogleSheet("loker", {
+      action: "batch_update_status",
+      ids: ids,
+      status: "Non-Aktif",
     });
-    if (!writeResult.success) {
-      return NextResponse.json(
-        { success: false, message: writeResult.message },
-        { status: 500 }
-      );
-    }
+    if (!result.success) throw new Error(result.message);
     return NextResponse.json({
       success: true,
-      message: "Lowongan kerja berhasil dihapus",
+      message: `${ids.length} loker berhasil dihapus`,
     });
-  } catch {
+  } catch (error: any) {
+    console.error("Error deleting loker:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }
