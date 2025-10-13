@@ -105,7 +105,9 @@ export async function writeGoogleSheet(
 
       const existingRow = allData[rowIndexToUpdate - 2];
       const updatedRow = headers.map((header) =>
-        data[header] !== undefined ? data[header] : existingRow[header]
+        data[header as keyof WargaData] !== undefined
+          ? data[header as keyof WargaData]
+          : existingRow[header as keyof WargaData]
       );
 
       await sheets.spreadsheets.values.update({
@@ -140,7 +142,7 @@ export async function writeGoogleSheet(
         const rowIndex = allData.findIndex((row) => row.id === id) + 2;
         if (rowIndex >= 2) {
           const existingRow = allData[rowIndex - 2];
-          const newRow = [...headers.map((h) => existingRow[h] || "")]; // Buat baris baru berdasarkan data yang ada
+          const newRow = [...headers.map((h) => existingRow[h as keyof WargaData] ?? "")]; // Buat baris baru berdasarkan data yang ada
           newRow[statusColIndex] = options.status || "Non-Aktif";
           if (updatedAtIndex !== -1) newRow[updatedAtIndex] = now;
 

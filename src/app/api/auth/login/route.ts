@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet } from "@/lib/googleSheets";
-import { encrypt } from "@/lib/encrypt"; // Pastikan Anda memiliki fungsi encrypt yang sesuai
+import { encrypt } from "@/lib/encrypt";
 import bcrypt from "bcryptjs";
 
 interface UserAuth {
