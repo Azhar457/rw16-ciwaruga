@@ -9,8 +9,8 @@ import Image from "next/image";
 
 interface WargaData {
   id: number;
-  nik_encrypted: string;
-  kk_encrypted: string;
+  nik: string;
+  kk: string;
   nama: string;
   jenis_kelamin: string;
   tempat_lahir: string;
@@ -210,13 +210,13 @@ export default function WargaVerifyPage() {
                       <div>
                         <span className="text-gray-600">NIK:</span>
                         <span className="ml-2 font-medium">
-                          {wargaData.nik_encrypted}
+                          {wargaData.nik}
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-600">No. KK:</span>
                         <span className="ml-2 font-medium">
-                          {wargaData.kk_encrypted}
+                          {wargaData.kk}
                         </span>
                       </div>
                       <div>
