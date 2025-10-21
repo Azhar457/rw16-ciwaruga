@@ -571,9 +571,8 @@ export default function RTDashboard() {
                 maxLength={16}
                 pattern="[0-9]{16}"
                 title="NIK harus terdiri dari 16 angka"
-                disabled={!!editingWarga} // Tambahkan ini agar NIK tidak bisa diedit
+                disabled={!!editingWarga}
               />
-              {/* --- PERBAIKAN DI SINI --- */}
               {formErrors.nik && <p className="text-red-500 text-xs mt-1">{formErrors.nik[0]}</p>}
             </div>
 
@@ -590,9 +589,8 @@ export default function RTDashboard() {
                 maxLength={16}
                 pattern="[0-9]{16}"
                 title="Nomor KK harus terdiri dari 16 angka"
-                disabled={!!editingWarga} // Tambahkan ini agar KK tidak bisa diedit
+                disabled={!!editingWarga}
               />
-              {/* --- PERBAIKAN DI SINI --- */}
               {formErrors.kk && <p className="text-red-500 text-xs mt-1">{formErrors.kk[0]}</p>}
             </div>
 
