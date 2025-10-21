@@ -171,3 +171,26 @@ export async function writeGoogleSheet(
     return { success: false, message: "Failed to update Google Sheets." };
   }
 }
+/**
+ * Filters an array of records to include only those with status_aktif === "Aktif".
+ * @param records Array of records, each expected to have a status_aktif property.
+ * @returns Filtered array of active records.
+ */
+export function filterActiveRecords<T extends { status_aktif?: string }>(records: T[]): T[] {
+  if (!Array.isArray(records)) {
+    console.warn("filterActiveRecords received non-array input:", records);
+    return [];
+  }
+  return records.filter(record => record.status_aktif === "Aktif");
+}
+
+// --- Make sure verifyWargaData is also exported if used elsewhere (Placeholder) ---
+export async function verifyWargaData(nik: string, kk: string): Promise<WargaData | null> {
+  // Placeholder: Implement actual Google Apps Script call or verification logic here
+  console.warn("verifyWargaData is a placeholder and needs implementation.");
+  // Example: Read sheet and find matching record (less secure without Apps Script)
+  // const wargaData = await readGoogleSheet<WargaData>("warga");
+  // const found = wargaData.find(w => w.nik_encrypted === nik && w.kk_encrypted === kk); // NOTE: This assumes NIK/KK are stored encrypted/hashed in the sheet
+  // return found || null;
+  return null; // Return null until implemented
+}

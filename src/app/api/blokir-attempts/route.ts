@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Create new record
-      const maxId = Math.max(...blokirData.map((b) => b.id), 0);
+      const maxId = Math.max(...blokirData.map((b) => b.id || 0), 0); // Added || 0 for safety
       const newRecord = {
         id: maxId + 1,
         ip_address,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         status: "monitoring",
       };
 
-      await writeGoogleSheet("blokir_attempts", { ...blokirData, action: 'insert' });
+      await writeGoogleSheet("blokir_attempts", { action: 'append', data: newRecord });
     }
 
     return NextResponse.json({
