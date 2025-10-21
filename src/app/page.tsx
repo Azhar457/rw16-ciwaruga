@@ -135,7 +135,7 @@ export default function HomePage() {
             <div className="flex justify-center">
               <div className="w-72 h-96 rounded-3xl overflow-hidden border-4 border-emerald-100 shadow-lg">
                 <Image
-                  src="/Ramon.JPG"
+                  src="Ramon.jpg"
                   alt="Ketua RW"
                   width={2240}
                   height={3200}

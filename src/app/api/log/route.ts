@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     };
 
-    await writeGoogleSheet("log_aktivitas", logEntry);
+    await writeGoogleSheet("log_aktivitas", { action: 'append', data: logEntry });
 
     return NextResponse.json({
       success: true,
