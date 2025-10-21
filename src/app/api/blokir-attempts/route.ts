@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
+
 interface BlokirData {
   id: number;
   ip_address: string;
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         status: "monitoring",
       };
 
-      await writeGoogleSheet("blokir_attempts", newRecord);
+      await writeGoogleSheet("blokir_attempts", { ...blokirData, action: 'insert' });
     }
 
     return NextResponse.json({
