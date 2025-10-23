@@ -17,8 +17,8 @@ export interface SessionUser {
 // Tipe data untuk data warga
 export interface WargaData {
   id: number;
-  nik_encrypted: string;
-  kk_encrypted: string;
+  nik: string;
+  kk: string;
   nama: string;
   jenis_kelamin: string;
   tempat_lahir: string;

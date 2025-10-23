@@ -127,7 +127,7 @@ export default function LoginPage() {
                 loading={loading}
                 disabled={loading}
               >
-                {loading ? <LoadingSpinner size="sm" /> : "Masuk"}
+                {loading ? " " : "Masuk"}
               </Button>
             </form>
 

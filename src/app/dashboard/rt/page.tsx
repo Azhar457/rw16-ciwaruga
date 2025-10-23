@@ -28,8 +28,8 @@ interface SessionUser {
 // Interface untuk data warga yang diterima dari API
 interface WargaData {
   id: number;
-  nik_encrypted?: string;
-  kk_encrypted?: string;
+  nik: string;
+  kk: string;
   nama: string;
   jenis_kelamin: string;
   tempat_lahir: string;
@@ -45,14 +45,16 @@ interface WargaData {
   kewarganegaraan: string;
   no_hp: string;
   status_aktif: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
   last_verified?: string;
   [key: string]: any; // Index signature untuk akses dinamis
 }
 
 // Interface untuk data form
 interface WargaFormData {
+  nik: string;
+  kk: string;
   nama: string;
   jenis_kelamin: string;
   tempat_lahir: string;
@@ -74,7 +76,7 @@ export default function RTDashboard() {
   const { addToast } = useToast();
   const router = useRouter();
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
-
+  const [formErrors, setFormErrors] = useState<Record<string, string[] | undefined>>({}); // State baru
   // States
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,6 +92,8 @@ export default function RTDashboard() {
   // State untuk form tambah/edit
   const [formData, setFormData] = useState<WargaFormData>({
     nama: "",
+    nik: "",
+    kk: "",
     jenis_kelamin: "",
     tempat_lahir: "",
     tanggal_lahir: "",
@@ -141,6 +145,8 @@ export default function RTDashboard() {
       // Mengatur default RT/RW sesuai sesi Ketua RT saat ini
       setFormData({
         nama: "",
+        nik: "",
+        kk: "",
         jenis_kelamin: "",
         tempat_lahir: "",
         tanggal_lahir: "",
@@ -174,6 +180,7 @@ export default function RTDashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setFormErrors({});
 
     const [year, month, day] = formData.tanggal_lahir.split("-");
     const submissionData = {
@@ -202,7 +209,17 @@ export default function RTDashboard() {
           "success"
         );
       } else {
-        throw new Error(result.message || "Gagal menyimpan data");
+        // --- TAMBAHKAN INI ---
+        if (res.status === 400 && result.errors) {
+            setFormErrors(result.errors);
+            // Ambil pesan error pertama untuk toast global, atau tampilkan semua di form
+            const firstErrorKey = Object.keys(result.errors)[0];
+            const firstErrorMessage = result.errors[firstErrorKey]?.[0];
+            addToast(`Error: ${firstErrorMessage || result.message || 'Data tidak valid'}`, "error");
+        } else {
+            throw new Error(result.message || "Gagal menyimpan data");
+        }
+        // --- AKHIR TAMBAHAN ---
       }
     } catch (error: any) {
       addToast(`Terjadi kesalahan: ${error.message}`, "error");
@@ -427,6 +444,7 @@ export default function RTDashboard() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
+            
           </div>
 
           <div className="overflow-x-auto">
@@ -523,6 +541,7 @@ export default function RTDashboard() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Nama Lengkap */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Nama Lengkap
@@ -535,7 +554,47 @@ export default function RTDashboard() {
                 className="w-full p-2 border rounded"
                 required
               />
+              {/* Tambahkan display error jika perlu */}
+              {formErrors.nama && <p className="text-red-500 text-xs mt-1">{formErrors.nama[0]}</p>}
             </div>
+
+            {/* NIK */}
+            <div>
+              <label className="block text-sm font-medium mb-1">NIK</label>
+              <input
+                type="text"
+                name="nik"
+                value={formData.nik}
+                onChange={handleFormChange}
+                className="w-full p-2 border rounded"
+                required
+                maxLength={16}
+                pattern="[0-9]{16}"
+                title="NIK harus terdiri dari 16 angka"
+                disabled={!!editingWarga}
+              />
+              {formErrors.nik && <p className="text-red-500 text-xs mt-1">{formErrors.nik[0]}</p>}
+            </div>
+
+            {/* No. KK */}
+            <div>
+              <label className="block text-sm font-medium mb-1">No. KK</label>
+              <input
+                type="text"
+                name="kk"
+                value={formData.kk}
+                onChange={handleFormChange}
+                className="w-full p-2 border rounded"
+                required
+                maxLength={16}
+                pattern="[0-9]{16}"
+                title="Nomor KK harus terdiri dari 16 angka"
+                disabled={!!editingWarga}
+              />
+              {formErrors.kk && <p className="text-red-500 text-xs mt-1">{formErrors.kk[0]}</p>}
+            </div>
+
+            {/* Jenis Kelamin */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Jenis Kelamin
@@ -551,7 +610,10 @@ export default function RTDashboard() {
                 <option value="Laki-laki">Laki-laki</option>
                 <option value="Perempuan">Perempuan</option>
               </select>
+               {formErrors.jenis_kelamin && <p className="text-red-500 text-xs mt-1">{formErrors.jenis_kelamin[0]}</p>}
             </div>
+
+             {/* Tempat Lahir */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Tempat Lahir
@@ -564,7 +626,10 @@ export default function RTDashboard() {
                 className="w-full p-2 border rounded"
                 required
               />
+               {formErrors.tempat_lahir && <p className="text-red-500 text-xs mt-1">{formErrors.tempat_lahir[0]}</p>}
             </div>
+
+             {/* Tanggal Lahir */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Tanggal Lahir
@@ -572,12 +637,15 @@ export default function RTDashboard() {
               <input
                 type="date"
                 name="tanggal_lahir"
-                value={formData.tanggal_lahir}
+                value={formData.tanggal_lahir} // Ingat, ini format YYYY-MM-DD
                 onChange={handleFormChange}
                 className="w-full p-2 border rounded"
                 required
               />
+               {formErrors.tanggal_lahir && <p className="text-red-500 text-xs mt-1">{formErrors.tanggal_lahir[0]}</p>}
             </div>
+
+            {/* Alamat */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Alamat</label>
               <input
@@ -588,12 +656,15 @@ export default function RTDashboard() {
                 className="w-full p-2 border rounded"
                 required
               />
+               {formErrors.alamat && <p className="text-red-500 text-xs mt-1">{formErrors.alamat[0]}</p>}
             </div>
+
+            {/* RT/RW, Kelurahan, Kecamatan (Readonly) */}
             <div>
               <label className="block text-sm font-medium mb-1">RT/RW</label>
               <input
                 type="text"
-                value={`${session.rt_akses}/${session.rw_akses}`}
+                value={`${session?.rt_akses}/${session?.rw_akses}`} // Gunakan optional chaining
                 className="w-full p-2 border rounded bg-gray-100"
                 readOnly
               />
@@ -608,7 +679,7 @@ export default function RTDashboard() {
                 value={formData.kelurahan}
                 onChange={handleFormChange}
                 className="w-full p-2 border rounded bg-gray-100"
-                readOnly
+                readOnly // Atau bisa diedit jika perlu
               />
             </div>
             <div>
@@ -621,9 +692,11 @@ export default function RTDashboard() {
                 value={formData.kecamatan}
                 onChange={handleFormChange}
                 className="w-full p-2 border rounded bg-gray-100"
-                readOnly
+                readOnly // Atau bisa diedit jika perlu
               />
             </div>
+
+             {/* Agama */}
             <div>
               <label className="block text-sm font-medium mb-1">Agama</label>
               <select
@@ -641,7 +714,10 @@ export default function RTDashboard() {
                 <option value="Buddha">Buddha</option>
                 <option value="Konghucu">Konghucu</option>
               </select>
+               {formErrors.agama && <p className="text-red-500 text-xs mt-1">{formErrors.agama[0]}</p>}
             </div>
+
+             {/* Status Perkawinan */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Status Perkawinan
@@ -659,7 +735,10 @@ export default function RTDashboard() {
                 <option value="Cerai Hidup">Cerai Hidup</option>
                 <option value="Cerai Mati">Cerai Mati</option>
               </select>
+               {formErrors.status_perkawinan && <p className="text-red-500 text-xs mt-1">{formErrors.status_perkawinan[0]}</p>}
             </div>
+
+            {/* Pekerjaan */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Pekerjaan
@@ -672,7 +751,10 @@ export default function RTDashboard() {
                 className="w-full p-2 border rounded"
                 required
               />
+               {formErrors.pekerjaan && <p className="text-red-500 text-xs mt-1">{formErrors.pekerjaan[0]}</p>}
             </div>
+
+            {/* Kewarganegaraan */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Kewarganegaraan
@@ -685,7 +767,10 @@ export default function RTDashboard() {
                 className="w-full p-2 border rounded"
                 required
               />
+               {formErrors.kewarganegaraan && <p className="text-red-500 text-xs mt-1">{formErrors.kewarganegaraan[0]}</p>}
             </div>
+
+            {/* No HP */}
             <div>
               <label className="block text-sm font-medium mb-1">No. HP</label>
               <input
@@ -699,8 +784,11 @@ export default function RTDashboard() {
                 className="w-full p-2 border rounded"
                 required
               />
+              {formErrors.no_hp && <p className="text-red-500 text-xs mt-1">{formErrors.no_hp[0]}</p>}
             </div>
           </div>
+
+          {/* Tombol Aksi */}
           <div className="flex justify-end gap-2 mt-4">
             <Button
               type="button"

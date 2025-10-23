@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   readGoogleSheet,
   writeGoogleSheet,
-  updateGoogleSheet,
 } from "@/lib/googleSheets";
 import { getSession } from "@/lib/auth";
 
@@ -122,9 +121,8 @@ export async function PUT(request: NextRequest) {
       ...updateData,
       updated_at: new Date().toISOString(),
     };
-
-    await updateGoogleSheet("subscriptions", id, dataToUpdate);
-
+    await writeGoogleSheet("subscriptions", dataToUpdate, );
+    
     return NextResponse.json({
       success: true,
       message: "Subscription berhasil diupdate",
