@@ -30,9 +30,8 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
   const [activeRt, setActiveRt] = useState<string>('Semua');
   const router = useRouter();
 
-  // Optimisasi: Buat daftar RT secara dinamis dari data yang ada
   const rukunTetangga = useMemo(() => 
-    [...new Set(initialWarga.map(w => w.rt))].sort(), 
+    [...new Set(initialWarga.map(w => w.rt))].sort((a, b) => Number(a) - Number(b)), 
     [initialWarga]
   );
 
@@ -41,10 +40,11 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
     router.push('/auth/login');
   }
 
-  // Filter data berdasarkan RT yang aktif dan kata kunci pencarian
   const displayedWarga = useMemo(() => 
     initialWarga.filter(warga => {
-      const inActiveRt = activeRt === 'Semua' || warga.rt === activeRt;
+      // --- PERBAIKAN DI SINI ---
+      // Pastikan perbandingan dilakukan sebagai string
+      const inActiveRt = activeRt === 'Semua' || String(warga.rt) === String(activeRt);
       const matchesSearch = searchTerm === '' || warga.nama.toLowerCase().includes(searchTerm.toLowerCase());
       return inActiveRt && matchesSearch;
     }),
@@ -90,12 +90,23 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Data Warga RW {session.rw_akses}</h2>
           
           <div className="flex border-b mb-4 overflow-x-auto">
-            <button onClick={() => setActiveRt('Semua')} className={`px-4 py-2 -mb-px border-b-2 whitespace-nowrap ${activeRt === 'Semua' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Semua RT</button>
+            <button 
+              onClick={() => setActiveRt('Semua')} 
+              className={`px-4 py-2 -mb-px border-b-2 font-medium whitespace-nowrap text-sm sm:text-base ${activeRt === 'Semua' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              Semua RT
+            </button>
             {rukunTetangga.map(rt => (
-              <button key={rt} onClick={() => setActiveRt(rt)} className={`px-4 py-2 -mb-px border-b-2 whitespace-nowrap ${activeRt === rt ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>RT {rt}</button>
+              <button 
+                key={rt} 
+                onClick={() => setActiveRt(String(rt))}
+                className={`px-4 py-2 -mb-px border-b-2 font-medium whitespace-nowrap text-sm sm:text-base ${String(activeRt) === String(rt) ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                RT {rt}
+              </button>
             ))}
           </div>
-          
+
           <div className="relative mb-4">
             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -113,7 +124,9 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alamat</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RT</th>
+                  {activeRt === 'Semua' && (
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RT</th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. HP</th>
                 </tr>
               </thead>
@@ -123,14 +136,16 @@ export default function RwDashboardClient({ initialWarga, session }: RwDashboard
                     <tr key={warga.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{warga.nama}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warga.alamat}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warga.rt}</td>
+                      {activeRt === 'Semua' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warga.rt}</td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warga.no_hp}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="text-center py-8 text-gray-500">
-                      {searchTerm ? "Warga tidak ditemukan." : "Tidak ada data warga di RT ini."}
+                    <td colSpan={activeRt === 'Semua' ? 4 : 3} className="text-center py-8 text-gray-500">
+                      {initialWarga.length > 0 ? "Tidak ada warga yang cocok dengan pencarian." : "Tidak ada data warga di RW ini."}
                     </td>
                   </tr>
                 )}
