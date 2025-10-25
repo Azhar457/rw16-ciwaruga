@@ -4,12 +4,23 @@ import path from "path";
 import { WargaData } from "./auth"; // Pastikan path ini benar
 
 const SPREADSHEET_ID = process.env.SHEET_ID;
+const GOOGLE_CREDENTIALS_JSON = process.env.GOOGLE_CREDENTIALS_JSON;
 
 // Otentikasi menggunakan service account
-const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(process.cwd(), "credentials.json"),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-});
+const auth = new google.auth.GoogleAuth(
+  // Logika untuk memilih metode otentikasi:
+  // 1. Jika GOOGLE_CREDENTIALS_JSON ada (di Vercel), gunakan isinya.
+  // 2. Jika tidak, fallback ke file credentials.json (untuk local development).
+  GOOGLE_CREDENTIALS_JSON
+    ? {
+        credentials: JSON.parse(GOOGLE_CREDENTIALS_JSON),
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      }
+    : {
+        keyFile: path.join(process.cwd(), "credentials.json"),
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      }
+);
 
 const sheets = google.sheets({ version: "v4", auth });
 
