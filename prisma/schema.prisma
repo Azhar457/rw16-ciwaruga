@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int       @id @default(autoincrement())
+  email               String    @unique
+  password_hash       String
+  role                String    @default("warga")
+  rt_akses            String?
+  rw_akses            String?
+  nama_lengkap        String
+  status_aktif        String    @default("Aktif")
+  last_login          DateTime?
+  subscription_status String?   @default("active")
+  subscription_end    String?
+  created_at          DateTime  @default(now())
+  verified_by         String?
+
+  @@map("users")
+}
+
+model Warga {
+  id                Int      @id @default(autoincrement())
+  nik               String   @unique
+  kk                String
+  nama              String
+  jenis_kelamin     String
+  tempat_lahir      String
+  tanggal_lahir     String
+  alamat            String
+  rt                String
+  rw                String
+  kelurahan         String
+  kecamatan         String
+  agama             String
+  status_perkawinan String
+  pekerjaan         String
+  kewarganegaraan   String
+  no_hp             String
+  status_aktif      String   @default("Aktif")
+  last_verified     String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("warga")
+}
+
+model UMKM {
+  id                    Int      @id @default(autoincrement())
+  nama_usaha            String
+  pemilik_nik_encrypted String?
+  jenis_usaha           String
+  alamat                String
+  no_hp                 String
+  deskripsi             String?  @db.Text
+  foto_url              String?
+  status_verifikasi     String?
+  admin_approver        String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+  linked_warga_id       Int?
+
+  @@map("umkm")
+}
+
+model Loker {
+  id             Int      @id @default(autoincrement())
+  posisi         String
+  perusahaan     String
+  deskripsi      String?  @db.Text
+  gambar_url     String?
+  requirements   String?  @db.Text
+  salary_range   String?
+  lokasi         String?
+  contact_method String?
+  contact_person String?
+  status_aktif   String   @default("Aktif")
+  admin_poster   String?
+  deadline       String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("loker")
+}
+
+model BPH {
+  id            Int      @id @default(autoincrement())
+  nama          String
+  jabatan       String
+  periode_start String?
+  periode_end   String?
+  foto_url      String?
+  kontak        String?
+  bio           String?  @db.Text
+  status_aktif  String   @default("Aktif")
+  created_at    DateTime @default(now())
+
+  @@map("bph")
+}
+
+model LembagaDesa {
+  id                 Int      @id @default(autoincrement())
+  nama_lembaga       String
+  ketua              String?
+  sekretaris         String?
+  bendahara          String?
+  program_kerja      String?  @db.Text
+  kontak             String?
+  alamat_sekretariat String?
+  status_aktif       String   @default("Aktif")
+  logo_url           String?
+  created_at         DateTime @default(now())
+
+  @@map("lembaga_desa")
+}
+
+model Berita {
+  id             Int      @id @default(autoincrement())
+  judul          String
+  konten         String?  @db.LongText
+  kategori       String?
+  penulis        String?
+  foto_url       String?
+  status_publish String?  @default("Draft")
+  views          Int      @default(0)
+  admin_approver String?
+  published_at   String?
+  lembaga_id     Int?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("berita")
+}
+
+model Subscription {
+  id             Int      @id @default(autoincrement())
+  rw_code        String   @unique
+  nama_rw        String
+  contact_person String?
+  email          String?
+  phone          String?
+  start_date     String?
+  end_date       String?
+  status         String?
+  payment_proof  String?
+  notes          String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+model LogAktivitas {
+  id             Int      @id @default(autoincrement())
+  user_email     String?
+  user_role      String?
+  action_type    String   // create, update, delete, login, logout
+  table_affected String?  // nama tabel yang dimodifikasi
+  record_id      String?  // ID dari data yang dimodifikasi
+  old_data       Json?    // data sebelum diubah (format JSON)
+  new_data       Json?    // data setelah diubah (format JSON)
+  ip_address     String?
+  user_agent     String?
+  timestamp      DateTime @default(now())
+
+  @@map("log_aktivitas")
+}
+
+model BlokirAttempt {
+  id             Int      @id @default(autoincrement())
+  ip_address     String   @unique
+  nik_attempted  String?
+  kk_attempted   String?
+  failed_count   Int      @default(0)
+  blocked_until  DateTime?
+  total_blocks   Int      @default(0)
+  first_attempt  DateTime @default(now())
+  last_attempt   DateTime @updatedAt
+  status         String   @default("Active") // Active, Blocked
+
+  @@map("blokir_attempt")
+}

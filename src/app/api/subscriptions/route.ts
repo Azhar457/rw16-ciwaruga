@@ -1,40 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  readGoogleSheet,
-  writeGoogleSheet,
-} from "@/lib/googleSheets";
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-interface SubscriptionData {
-  id: number;
-  rw_code: string;
-  nama_rw: string;
-  contact_person: string;
-  email: string;
-  phone: string;
-  start_date: string;
-  end_date: string;
-  status: "active" | "expired" | "suspended";
-  payment_proof: string;
-  notes: string;
-  created_at: string;
-  updated_at: string;
-}
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin", "developer"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
 
-    const subscriptionData = (await readGoogleSheet(
-      "subscriptions"
-    )) as unknown as SubscriptionData[];
+    const subscriptionData = await prisma.subscription.findMany({
+      orderBy: { rw_code: 'asc' }
+    });
 
     return NextResponse.json(subscriptionData);
   } catch (error) {
@@ -58,14 +41,12 @@ export async function POST(request: NextRequest) {
     }
 
     const newSubscription = await request.json();
-    const subscriptionData = (await readGoogleSheet(
-      "subscriptions"
-    )) as unknown as SubscriptionData[];
 
     // Check if RW already exists
-    const existingRW = subscriptionData.find(
-      (sub) => sub.rw_code === newSubscription.rw_code
-    );
+    const existingRW = await prisma.subscription.findUnique({
+      where: { rw_code: newSubscription.rw_code }
+    });
+
     if (existingRW) {
       return NextResponse.json(
         { success: false, message: "RW sudah terdaftar" },
@@ -73,15 +54,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const maxId = Math.max(...subscriptionData.map((s) => s.id), 0);
-    const subscriptionToAdd = {
-      ...newSubscription,
-      id: maxId + 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    await writeGoogleSheet("subscriptions", subscriptionToAdd);
+    const subscriptionToAdd = await prisma.subscription.create({
+      data: {
+        rw_code: newSubscription.rw_code,
+        nama_rw: newSubscription.nama_rw,
+        contact_person: newSubscription.contact_person,
+        email: newSubscription.email,
+        phone: newSubscription.phone,
+        start_date: newSubscription.start_date,
+        end_date: newSubscription.end_date,
+        status: newSubscription.status || 'active',
+        payment_proof: newSubscription.payment_proof,
+        notes: newSubscription.notes,
+        created_at: new Date(),
+        updated_at: new Date()
+      }
+    });
 
     return NextResponse.json({
       success: true,
@@ -117,12 +105,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const dataToUpdate = {
-      ...updateData,
-      updated_at: new Date().toISOString(),
-    };
-    await writeGoogleSheet("subscriptions", dataToUpdate, );
-    
+    await prisma.subscription.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...updateData,
+        updated_at: new Date()
+      }
+    });
+
     return NextResponse.json({
       success: true,
       message: "Subscription berhasil diupdate",

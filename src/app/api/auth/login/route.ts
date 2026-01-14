@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet } from "@/lib/googleSheets";
+import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encrypt";
 import bcrypt from "bcryptjs";
-
-interface UserAuth {
-  id: number;
-  email: string;
-  password_hash: string;
-  role: string;
-  rt_akses: string;
-  rw_akses: string;
-  nama_lengkap: string;
-  status_aktif: string;
-  last_login: string;
-  subscription_status: string;
-  subscription_end: string;
-  created_at: string;
-  verified_by: string;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,22 +14,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Baca data dari Google Sheets (ganti dengan nama sheet yang sesuai)
-    const authData = (await readGoogleSheet(
-      "account"
-    )) as unknown as UserAuth[];
-
-    if (!authData || authData.length === 0) {
-      return NextResponse.json(
-        { success: false, message: "Data pengguna tidak ditemukan" },
-        { status: 404 }
-      );
-    }
-
-    // Cari user berdasarkan email
-    const user = authData.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
+    // Cari user berdasarkan email di database
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -93,11 +65,11 @@ export async function POST(request: NextRequest) {
       id: user.id,
       email: user.email,
       role: user.role,
-      rt_akses: user.rt_akses,
-      rw_akses: user.rw_akses,
+      rt_akses: user.rt_akses || "",
+      rw_akses: user.rw_akses || "",
       nama_lengkap: user.nama_lengkap,
-      subscription_status: user.subscription_status,
-      subscription_end: user.subscription_end,
+      subscription_status: user.subscription_status || "inactive",
+      subscription_end: user.subscription_end || "",
       loginTime: new Date().toISOString(),
     };
 

@@ -1,31 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  readGoogleSheet,
-  writeGoogleSheet,
-  filterActiveRecords,
-} from "@/lib/googleSheets";
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-interface BPHData {
-  [key: string]: unknown;
-  id: number;
-  nama: string;
-  jabatan: string;
-  periode_start: string;
-  periode_end: string;
-  foto_url: string;
-  kontak: string;
-  bio: string;
-  status_aktif: string;
-  created_at: string;
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const bphData = (await readGoogleSheet("bph")) as BPHData[];
-
-    // Menggunakan fungsi filter yang sudah ada dan andal
-    const activeBPH = filterActiveRecords(bphData);
+    const activeBPH = await prisma.bPH.findMany({
+      where: { status_aktif: "Aktif" },
+      orderBy: { id: 'asc' }
+    });
 
     return NextResponse.json(activeBPH);
   } catch (error) {
@@ -52,16 +36,20 @@ export async function POST(request: NextRequest) {
     }
 
     const newBPH = await request.json();
-    const bphData = (await readGoogleSheet("bph")) as BPHData[];
 
-    const maxId = Math.max(0, ...bphData.map((b) => b.id));
-    const bphToAdd = {
-      ...newBPH,
-      id: maxId + 1,
-      created_at: new Date().toISOString(),
-    };
-
-    await writeGoogleSheet("bph", bphToAdd);
+    const bphToAdd = await prisma.bPH.create({
+      data: {
+        nama: newBPH.nama,
+        jabatan: newBPH.jabatan,
+        periode_start: newBPH.periode_start,
+        periode_end: newBPH.periode_end, // Optional
+        foto_url: newBPH.foto_url,
+        kontak: newBPH.kontak,
+        bio: newBPH.bio,
+        status_aktif: "Aktif",
+        created_at: new Date()
+      }
+    });
 
     return NextResponse.json({
       success: true,

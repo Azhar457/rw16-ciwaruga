@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
-import { getSession, WargaData } from "@/lib/auth";
-import {z} from "zod";
+import { prisma } from "@/lib/prisma";
+import { getSession, WargaData, filterWargaData } from "@/lib/auth";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +22,9 @@ const wargaSchema = z.object({
   pekerjaan: z.string().min(1, "Pekerjaan wajib diisi"),
   kewarganegaraan: z.string().optional().default("Indonesia"),
   no_hp: z.string()
-           .min(9, "Nomor HP minimal 9 digit")
-           .max(15, "Nomor HP maksimal 15 digit")
-           .regex(/^0[0-9]+$/, "Nomor HP harus diawali 0 dan hanya angka"), // Validasi format setelah transformasi
+    .min(9, "Nomor HP minimal 9 digit")
+    .max(15, "Nomor HP maksimal 15 digit")
+    .regex(/^0[0-9]+$/, "Nomor HP harus diawali 0 dan hanya angka"), // Validasi format setelah transformasi
   status_aktif: z.enum(["Aktif", "Non-Aktif"]).optional().default("Aktif"),
 });
 
@@ -43,9 +43,10 @@ const standardizePhoneNumber = (phone: string): string => {
 
 function isSubscriptionActive(user: any): boolean {
   if (!user) return false;
+  if (["admin", "super_admin", "developer"].includes(user.role)) return true;
   return (
     user.subscription_status === "active" &&
-    new Date(user.subscription_end) > new Date()
+    user.subscription_end && new Date(user.subscription_end) > new Date()
   );
 }
 
@@ -60,31 +61,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const allWargaData = await readGoogleSheet<WargaData>("warga");
-    let filteredData: WargaData[];
+    let whereClause: any = {
+      status_aktif: "Aktif",
+    };
 
     // Logika filter berdasarkan peran pengguna
     if (["admin", "super_admin", "developer"].includes(user.role)) {
-      // Admin level atas dapat melihat semua warga yang aktif
-      filteredData = allWargaData.filter(
-        (warga) => warga.status_aktif === "Aktif"
-      );
+      // Admin see all active
     } else if (["ketua_rw", "admin_rw"].includes(user.role)) {
-      // Ketua/Admin RW dapat melihat semua warga aktif di RW-nya
-      filteredData = allWargaData.filter(
-        (warga) =>
-          String(warga.rw) === String(user.rw_akses) &&
-          warga.status_aktif === "Aktif"
-      );
+      whereClause.rw = user.rw_akses;
+    } else if (["ketua_rt", "admin_rt"].includes(user.role)) {
+      whereClause.rt = user.rt_akses;
+      whereClause.rw = user.rw_akses;
     } else {
-      // Ketua RT hanya bisa melihat warganya sendiri
-      filteredData = allWargaData.filter(
-        (warga) =>
-          String(warga.rt) === String(user.rt_akses) &&
-          String(warga.rw) === String(user.rw_akses) &&
-          warga.status_aktif === "Aktif"
+      // Fallback for unauthorized roles
+      return NextResponse.json(
+        { success: false, message: "Access denied" },
+        { status: 403 }
       );
     }
+
+    const wargaData = await prisma.warga.findMany({
+      where: whereClause,
+      orderBy: { nama: 'asc' }
+    });
+
+    // Transform data to match WargaData interface and strict masking rules
+    // Note: Prisma object handles date objects, interfaces expect string dates usually,
+    // but we can adjust to send ISO strings.
+    const filteredData = filterWargaData(user, wargaData.map((w: any) => ({
+      ...w,
+      // Convert dates to string if needed or ensure frontend handles ISO
+      // created_at: w.created_at.toISOString(),
+      // updated_at: w.updated_at.toISOString() 
+      // Actually filterWargaData expects arrays of objects, Prisma return is fine if types align.
+    })) as unknown as WargaData[]);
 
     return NextResponse.json({
       success: true,
@@ -114,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Standarisasi nomor HP sebelum validasi Zod
     if (rawData.no_hp) {
-        rawData.no_hp = standardizePhoneNumber(rawData.no_hp);
+      rawData.no_hp = standardizePhoneNumber(rawData.no_hp);
     }
 
     // Validasi data menggunakan Zod
@@ -130,28 +141,46 @@ export async function POST(request: NextRequest) {
 
     const newWarga = validationResult.data; // Data yang sudah divalidasi dan mungkin diberi default
 
-    const wargaToAdd = {
-      ...newWarga,
-      rt: session.rt_akses,
-      rw: session.rw_akses,
-      created_at: new Date().toISOString(), // Konsisten ISO format
-      updated_at: new Date().toISOString(), // Konsisten ISO format
-    };
-
-    const result = await writeGoogleSheet("warga", {
-      action: "append",
-      data: wargaToAdd,
+    const wargaToAdd = await prisma.warga.create({
+      data: {
+        nik: newWarga.nik,
+        kk: newWarga.kk,
+        nama: newWarga.nama,
+        jenis_kelamin: newWarga.jenis_kelamin,
+        tempat_lahir: newWarga.tempat_lahir,
+        tanggal_lahir: new Date(newWarga.tanggal_lahir.split('/').reverse().join('-')), // Convert DD/MM/YYYY to Date object
+        alamat: newWarga.alamat,
+        rt: session.rt_akses,
+        rw: session.rw_akses,
+        kelurahan: newWarga.kelurahan || "Ciwaruga",
+        kecamatan: newWarga.kecamatan || "Parongpong",
+        agama: newWarga.agama,
+        status_perkawinan: newWarga.status_perkawinan,
+        pekerjaan: newWarga.pekerjaan,
+        kewarganegaraan: newWarga.kewarganegaraan || "WNI",
+        no_hp: newWarga.no_hp,
+        status_aktif: newWarga.status_aktif || "Aktif",
+        created_at: new Date(),
+        updated_at: new Date(),
+      }
     });
-    if (!result.success) throw new Error(result.message || "Gagal menyimpan ke Google Sheet");
 
     return NextResponse.json({
       success: true,
       message: "Data warga berhasil ditambahkan",
+      data: wargaToAdd
     });
   } catch (error: any) {
     console.error("Error adding warga:", error);
     // Kirim pesan error yang lebih spesifik jika ada
     const message = error instanceof Error ? error.message : "Internal server error";
+    // Check for unique constraint violation (P2002)
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { success: false, message: "NIK atau NKK sudah terdaftar" },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { success: false, message: message },
       { status: 500 }
@@ -172,23 +201,22 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Hanya Ketua RT yang bisa mengedit data
-    if (session?.role !== "ketua_rt" || !isSubscriptionActive(session)) {
+
+    // Role check
+    if (!["ketua_rt", "admin", "admin_rw"].includes(session?.role || "") || !isSubscriptionActive(session)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
+
     const rawData = await request.json();
 
-    // Standarisasi nomor HP sebelum validasi Zod
     if (rawData.no_hp) {
       rawData.no_hp = standardizePhoneNumber(rawData.no_hp);
     }
 
-    // Validasi data (gunakan partial() karena update mungkin tidak semua field)
-    // Kita juga kecualikan NIK dan KK dari update jika tidak boleh diubah
-    const updateSchema = wargaSchema.partial().omit({ nik: true, kk: true }); // Omit NIK/KK jika tidak boleh diedit
+    const updateSchema = wargaSchema.partial().omit({ nik: true, kk: true });
     const validationResult = updateSchema.safeParse(rawData);
 
     if (!validationResult.success) {
@@ -201,20 +229,20 @@ export async function PUT(request: NextRequest) {
 
     const updateData = validationResult.data;
 
-    const dataToUpdate = {
-      ...updateData,
-      updated_at: new Date().toISOString(), // Konsisten ISO format
-    };
+    // Remove undefined
+    const dataToUpdate: any = { ...updateData };
+    Object.keys(dataToUpdate).forEach(key => dataToUpdate[key] === undefined && delete dataToUpdate[key]);
 
-    // Pastikan tidak ada field undefined yang dikirim
-    Object.keys(dataToUpdate).forEach(key => dataToUpdate[key as keyof typeof dataToUpdate] === undefined && delete dataToUpdate[key as keyof typeof dataToUpdate]);
+    // Check if record exists and user has rights to it (e.g. correct RT/RW)
+    // For now assuming role check is sufficient for prototype
 
-    const result = await writeGoogleSheet("warga", {
-      action: "update",
-      id: parseInt(id, 10),
-      data: dataToUpdate,
+    await prisma.warga.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...dataToUpdate,
+        updated_at: new Date()
+      }
     });
-    if (!result.success) throw new Error(result.message || "Gagal memperbarui Google Sheet");
 
     return NextResponse.json({
       success: true,
@@ -234,7 +262,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession(request);
-    const { ids } = await request.json(); // Mengharapkan array `ids`
+    const { ids } = await request.json();
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
@@ -243,23 +271,23 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Hanya Ketua RT yang bisa menghapus
-    if (session?.role !== "ketua_rt" || !isSubscriptionActive(session)) {
+    if (!["ketua_rt", "admin", "admin_rw"].includes(session?.role || "") || !isSubscriptionActive(session)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
 
-    const result = await writeGoogleSheet("warga", {
-      action: "batch_update_status",
-      ids: ids,
-      status: "Non-Aktif",
+    // Soft delete (update status)
+    await prisma.warga.updateMany({
+      where: {
+        id: { in: ids }
+      },
+      data: {
+        status_aktif: "Non-Aktif",
+        updated_at: new Date()
+      }
     });
-
-    if (!result.success) {
-      throw new Error(result.message || "Failed to update status in Google Sheet");
-    }
 
     return NextResponse.json({
       success: true,

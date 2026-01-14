@@ -1,30 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet, filterActiveRecords } from "@/lib/googleSheets"; // Tambahkan import filterActiveRecords
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-interface LembagaData {
-  [key: string]: unknown;
-  id: number;
-  nama_lembaga: string;
-  ketua: string;
-  sekretaris: string;
-  bendahara: string;
-  program_kerja: string;
-  kontak: string;
-  alamat_sekretariat: string;
-  status_aktif: string;
-  created_at: string;
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const lembagaData = (await readGoogleSheet(
-      "lembaga_desa"
-    )) as LembagaData[];
-
-    // --- PERUBAHAN DI SINI ---
-    // Menggunakan fungsi filter yang lebih andal, bukan filter manual
-    const activeLembaga = filterActiveRecords(lembagaData);
+    const activeLembaga = await prisma.lembagaDesa.findMany({
+      where: { status_aktif: "Aktif" },
+      orderBy: { nama_lembaga: 'asc' }
+    });
 
     return NextResponse.json(activeLembaga);
   } catch (error) {
@@ -51,18 +36,21 @@ export async function POST(request: NextRequest) {
     }
 
     const newLembaga = await request.json();
-    const lembagaData = (await readGoogleSheet(
-      "lembaga_desa"
-    )) as LembagaData[];
 
-    const maxId = Math.max(0, ...lembagaData.map((l) => l.id));
-    const lembagaToAdd = {
-      ...newLembaga,
-      id: maxId + 1,
-      created_at: new Date().toISOString(),
-    };
-
-    await writeGoogleSheet("lembaga_desa", lembagaToAdd);
+    const lembagaToAdd = await prisma.lembagaDesa.create({
+      data: {
+        nama_lembaga: newLembaga.nama_lembaga,
+        ketua: newLembaga.ketua,
+        sekretaris: newLembaga.sekretaris,
+        bendahara: newLembaga.bendahara,
+        program_kerja: newLembaga.program_kerja,
+        kontak: newLembaga.kontak,
+        alamat_sekretariat: newLembaga.alamat_sekretariat,
+        status_aktif: "Aktif",
+        logo_url: newLembaga.logo_url,
+        created_at: new Date()
+      }
+    });
 
     return NextResponse.json({
       success: true,

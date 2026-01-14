@@ -1,29 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet } from "@/lib/googleSheets";
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-interface UmkmData {
-  id: number;
-  nama_usaha: string;
-  pemilik_nik_encrypted: string;
-  jenis_usaha: string;
-  alamat: string;
-  no_hp: string;
-  deskripsi: string;
-  foto_url: string;
-  status_verifikasi: string;
-  admin_approver: string;
-  created_at: string;
-  updated_at: string;
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const umkmData = (await readGoogleSheet("umkm")) as unknown as UmkmData[];
-    // Filter hanya yang verified untuk public
-    const verifiedUmkm = umkmData.filter(
-      (umkm) => umkm.status_verifikasi === "Verified"
-    );
+    const verifiedUmkm = await prisma.uMKM.findMany({
+      where: {
+        status_verifikasi: "Verified"
+      },
+      orderBy: { created_at: 'desc' }
+    });
 
     return NextResponse.json({ data: verifiedUmkm });
   } catch (error) {
@@ -50,17 +38,26 @@ export async function POST(request: NextRequest) {
     }
 
     const newUmkm = await request.json();
-    const umkmData = (await readGoogleSheet("umkm")) as unknown as UmkmData[];
 
-    const maxId = Math.max(...umkmData.map((u) => u.id), 0);
-    const umkmToAdd = {
-      ...newUmkm,
-      id: maxId + 1,
-      admin_approver: session.nama_lengkap,
-      status_verifikasi: "pending",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    // Determine linked_warga_id if provided or linkable
+    // Assuming newUmkm matches schema fields roughly
+
+    const umkmToAdd = await prisma.uMKM.create({
+      data: {
+        nama_usaha: newUmkm.nama_usaha,
+        jenis_usaha: newUmkm.jenis_usaha,
+        alamat: newUmkm.alamat,
+        no_hp: newUmkm.no_hp,
+        deskripsi: newUmkm.deskripsi,
+        foto_url: newUmkm.foto_url,
+        status_verifikasi: "pending", // Default pending
+        admin_approver: session.nama_lengkap, // Or null initially? Existing logic sets it to creator?
+        // "pemilik_nik_encrypted" handling?
+        // "linked_warga_id"?
+        created_at: new Date(),
+        updated_at: new Date()
+      }
+    });
 
     return NextResponse.json({
       success: true,

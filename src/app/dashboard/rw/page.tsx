@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { decrypt } from "@/lib/encrypt";
-import { readGoogleSheet } from "@/lib/googleSheets";
-import RwDashboardClient from "@/components/dashboard/rwdashboardclient"; 
+import { prisma } from "@/lib/prisma";
+import RwDashboardClient from "@/components/dashboard/rwdashboardclient";
 import { SessionUser, WargaData } from '@/lib/auth';
 
 // Fungsi untuk mendapatkan sesi di Server Component
@@ -20,10 +20,19 @@ async function getServerSession(): Promise<SessionUser | null> {
 // Fungsi untuk mengambil data warga langsung dari sumbernya di server
 async function getWargaForRw(rw: string): Promise<WargaData[]> {
     try {
-        const allWarga = await readGoogleSheet<WargaData>("warga");
-        // --- PERBAIKAN DI SINI ---
-        // Pastikan perbandingan dilakukan sebagai string untuk menghindari error tipe data
-        return allWarga.filter(warga => String(warga.rw) === String(rw));
+        const wargaFromDb = await prisma.warga.findMany({
+            where: {
+                rw: rw
+            }
+        });
+
+        // Convert Prisma result to WargaData interface (Date to string)
+        return wargaFromDb.map((w: any) => ({
+            ...w,
+            created_at: w.created_at.toISOString(),
+            updated_at: w.updated_at.toISOString(),
+            last_verified: w.last_verified || undefined // Handle optional/null
+        })) as unknown as WargaData[];
     } catch (error) {
         console.error("Failed to fetch warga data on server:", error);
         return [];

@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
-interface AccountData {
-  id: number;
-  email: string;
-  password_hash: string;
-  role: string;
-  rt_akses: string;
-  rw_akses: string;
-  nama_lengkap: string;
-  status_aktif: string;
-  last_login: string;
-  subscription_status: string;
-  subscription_end: string;
-  created_at: string;
-  updated_at: string;
-  [key: string]: string | number;
-}
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +14,11 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
-    const accountData = await readGoogleSheet("account");
+    const accountData = await prisma.user.findMany({
+      orderBy: { id: 'asc' }
+    });
+
+    // Hide password hashes
     const safeAccountData = accountData.map((acc: any) => ({
       ...acc,
       password_hash: "***HIDDEN***",
@@ -61,18 +50,23 @@ export async function POST(request: NextRequest) {
       );
     }
     const hashedPassword = await bcrypt.hash(password, 12);
-    const accountToAdd = {
-      ...newAccount,
-      password_hash: hashedPassword,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      status_aktif: "Aktif",
-    };
-    const result = await writeGoogleSheet("account", {
-      action: "append",
-      data: accountToAdd,
+
+    const accountToAdd = await prisma.user.create({
+      data: {
+        email: newAccount.email,
+        nama_lengkap: newAccount.nama_lengkap,
+        password_hash: hashedPassword,
+        role: newAccount.role,
+        rt_akses: newAccount.rt_akses,
+        rw_akses: newAccount.rw_akses,
+        status_aktif: "Aktif",
+        subscription_status: newAccount.subscription_status,
+        subscription_end: newAccount.subscription_end,
+        created_at: new Date()
+        // verified_by?
+      }
     });
-    if (!result.success) throw new Error(result.message);
+
     return NextResponse.json({
       success: true,
       message: "Akun berhasil ditambahkan",
@@ -102,17 +96,30 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
     const dataToUpdate: any = { ...updateData };
     if (password) {
       dataToUpdate.password_hash = await bcrypt.hash(password, 12);
     }
-    dataToUpdate.updated_at = new Date().toISOString();
-    const result = await writeGoogleSheet("account", {
-      action: "update",
-      id,
-      data: dataToUpdate,
+
+    // Remove invalid fields from dataToUpdate if User model is strict or just map explicitly
+    // For safety, let's map known fields
+    const validUpdateData: any = {};
+    if (dataToUpdate.email) validUpdateData.email = dataToUpdate.email;
+    if (dataToUpdate.nama_lengkap) validUpdateData.nama_lengkap = dataToUpdate.nama_lengkap;
+    if (dataToUpdate.role) validUpdateData.role = dataToUpdate.role;
+    if (dataToUpdate.rt_akses !== undefined) validUpdateData.rt_akses = dataToUpdate.rt_akses;
+    if (dataToUpdate.rw_akses !== undefined) validUpdateData.rw_akses = dataToUpdate.rw_akses;
+    if (dataToUpdate.status_aktif) validUpdateData.status_aktif = dataToUpdate.status_aktif;
+    if (dataToUpdate.subscription_status) validUpdateData.subscription_status = dataToUpdate.subscription_status;
+    if (dataToUpdate.subscription_end !== undefined) validUpdateData.subscription_end = dataToUpdate.subscription_end;
+    if (dataToUpdate.password_hash) validUpdateData.password_hash = dataToUpdate.password_hash;
+
+    await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: validUpdateData
     });
-    if (!result.success) throw new Error(result.message);
+
     return NextResponse.json({
       success: true,
       message: "Akun berhasil diupdate",

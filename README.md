@@ -1,179 +1,93 @@
-# 🏘️ Data RT/RW Web App
+# RW16 Ciwaruga Database System
 
-Aplikasi web untuk manajemen data RT/RW berbasis **Next.js** dengan integrasi **Google Sheets** sebagai database.  
-Proyek ini dibuat untuk memudahkan publikasi data UMKM, Loker, Berita, Lembaga, dan BPH RW secara **publik**, sekaligus menyediakan panel admin (NextAuth) untuk manajemen.
+## Overview
+This project is a Next.js application for managing RW16 Ciwaruga data. It has been migrated from a legacy Google Sheets backend to a robust **MySQL** database using **Prisma ORM**.
 
----
+## Tech Stack
+- **Framework**: Next.js (App Router)
+- **Database**: MySQL (local via Laragon or remote)
+- **ORM**: Prisma
+- **Authentication**: Custom Session (Encrypted Cookies)
+- **Styling**: Tailwind CSS
 
-## 🚀 Fitur
+## Getting Started
 
-- ✅ Publik Page UMKM (lihat + tambah data)
-- ✅ Struktur API terhubung ke Google Sheets
-- ✅ Env-based config (mudah setup lokal)
-- 🛠️ **Planned**: Login admin (NextAuth), Role management, Upload Foto, Deployment ke Vercel
+### 1. Prerequisites
+- Node.js (v18+)
+- MySQL Server (e.g., Laragon, XAMPP, or distinct service)
 
----
-
-## 📂 Struktur Proyek
-
-```
-src/
-┣ app/
-┃ ┣ api/               # API Routes (Google Sheets handler)
-┃ ┃ ┗ umkm/
-┃ ┃   ┗ route.ts       # API endpoint UMKM
-┃ ┣ umkm/              # Page publik UMKM
-┃ ┣ loker/             # Page publik Loker (planned)
-┃ ┣ berita/            # Page publik Berita (planned)
-┃ ┣ lembaga/           # Page publik Lembaga (planned)
-┃ ┗ bph/               # Page publik BPH (planned)
-┣ lib/
-┃ ┗ googleSheets.ts    # Util koneksi ke Google Sheets
-┗ components/          # Reusable UI components (planned)
-```
-
----
-
-## ⚙️ Setup Lokal
-
-### 1. **Clone repo**
-
-```bash
-git clone <repo-url>
-cd my-app
-```
-
-### 2. **Install dependencies**
-
-```bash
-npm install --legacy-peer-deps
-```
-
-
-### 3. **Buat file `.env.local` di root project**
+### 2. Environment Setup
+Create a `.env` file in the root directory (or use `.env.local`):
 
 ```env
-# API Key Google sudah menambahkan Spreadheet API
-GOOGLE_API_KEY=
-# ID Spreadsheet (dari Google Sheets utama RW)
-SHEET_ID=
-# Appscript Url
-APP_SCRIPT_URL=
-# URL Google Sheets API
-NEXT_PUBLIC_GOOGLE_SHEETS_API_URL=
-# NextAuth (kalau dipake login)
-NEXTAUTH_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-NEXTAUTH_URL=http://localhost:3000
+# Database Connection
+DATABASE_URL="mysql://root:@localhost:3306/rw16_ciwaruga"
 
-# Enkripsi (buat encrypt.ts)
-ENCRYPTION_SECRET=mySuperSecretKey
+# App Secrets
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+ENCRYPTION_KEY="your-secure-key-min-32-chars"
 ```
 
+### 3. Installation
+```bash
+npm install
+```
 
-### 4. **Jalankan server**
+### 4. Database Migration & Seeding
+Set up the database schema and initial data:
+```bash
+# Apply migrations (creates tables)
+npx prisma migrate dev
 
+# Seed initial data (Admin user, dummy data)
+npx prisma db seed
+```
+
+### 5. Running Development Server
 ```bash
 npm run dev
 ```
+Access the app at `http://localhost:3000`.
 
-Buka [http://localhost:3000](http://localhost:3000) di browser.
+## Project Structure
 
----
+- `prisma/`
+  - `schema.prisma`: Database schema definition.
+  - `seed.ts`: Script to populate initial data.
+- `src/app/api/`: API Routes (Serverless functions).
+  - All routes now use `prisma` to interact with the database.
+- `src/lib/`: Utility functions.
+  - `prisma.ts`: Prisma Client singleton.
+  - `auth.ts`: Session management and permission logic.
+  - `encrypt.ts`: Encryption helpers for sessions.
 
-## 🤝 Rules untuk Collaborator
+## Key Features & Permissions
 
-### **Data Access**
+| Role | Access Level |
+|Data Warga| Admin, Ketua RW, Admin RW see all. Ketua RT sees only their RT.|
+|UMKM, Loker, Berita| Managed by Admin/RW. Publicly viewable.|
+|Security| `LogAktivitas` tracks actions. `BlokirAttempt` blocks IPs after failed verify attempts.|
 
-- Semua akses data lewat `lib/googleSheets.ts`
-- Kalau bikin page baru:
-  1. Tambah route API di `/app/api/...`
-  2. Connect ke range Google Sheets sesuai sheet
-- **Jangan pernah commit `.env.local`** → sudah ada di `.gitignore`
+## Development Notes
 
-### **Branching Strategy**
+### Migration from Google Sheets
+The old `src/lib/googleSheets.ts` integration has been **REMOVED**.
+All data fetching must be done via `import { prisma } from "@/lib/prisma"`.
 
-- `feature/<nama_fitur>` → untuk fitur baru
-- `fix/<bug>` → untuk perbaikan bug
-- PR ke `main` dengan deskripsi singkat
+**Example:**
+```typescript
+// OLD
+// const data = await readGoogleSheet("warga");
 
-### **Code Style**
-
-- Gunakan TypeScript untuk semua file
-- Format dengan Prettier (jika sudah disetup)
-- Interface/Type untuk semua data structure
-
----
-
-## 📋 API Endpoints
-
-| Method | Endpoint    | Deskripsi             |
-| ------ | ----------- | --------------------- |
-| `GET`  | `/api/umkm` | Ambil semua data UMKM |
-| `POST` | `/api/umkm` | Tambah data UMKM baru |
-
-**Example Response:**
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "nama_usaha": "Warung Sederhana",
-      "jenis_usaha": "Kuliner",
-      "alamat": "Jl. Merpati No.10",
-      "no_hp": 81234567890,
-      "deskripsi": "Warung makan khas Sunda",
-      "status_verifikasi": "Verified"
-    }
-  ]
-}
+// NEW
+const data = await prisma.warga.findMany();
 ```
 
----
-
-## 📝 Next Steps
-
-- [ ] Tambah Login Admin (NextAuth)
-- [ ] Role-based akses (Admin RW)
-- [ ] Upload Foto (Google Drive/Firebase)
-- [ ] Deploy ke Vercel
-- [ ] Page untuk Loker, Berita, Lembaga, BPH
-- [ ] Dokumentasi lebih detail di Notion / Wiki GitHub
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 14 (App Router)
-- **Database**: Google Sheets + Google Apps Script
-- **Styling**: Tailwind CSS
-- **Auth**: NextAuth.js (planned)
-- **Deployment**: Vercel (planned)
-
----
-
-## 📌 Catatan Developer
-
-> **Project ini masih tahap awal (MVP)** → fokus dulu di page publik agar data bisa dilihat masyarakat.
->
-> Setelah semua publik page stabil, baru lanjut ke fitur admin & manajemen data.
-
----
-
-## 🐛 Troubleshooting
-
-### Error "Missing Google Sheets env variables"
-
-- Pastikan file `.env.local` sudah dibuat
-- Restart development server (`Ctrl+C` lalu `npm run dev`)
-- Clear Next.js cache: `rmdir /s .next` (Windows)
-
-### Error "umkm.map is not a function"
-
-- Periksa struktur response dari API
-- Pastikan `result.data` adalah array
-
----
-
-**Made with ❤️ for RT/RW Community**
+### Authorization
+Always check session and role before performing database operations in API routes.
+```typescript
+const session = await getSession(request);
+if (!session || !["admin", "ketua_rt"].includes(session.role)) {
+  return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+}
+```

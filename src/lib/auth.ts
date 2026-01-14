@@ -15,6 +15,7 @@ export interface SessionUser {
 }
 
 // Tipe data untuk data warga
+// Tipe data untuk data warga (Sesuaikan dengan Prisma Model)
 export interface WargaData {
   id: number;
   nik: string;
@@ -22,7 +23,7 @@ export interface WargaData {
   nama: string;
   jenis_kelamin: string;
   tempat_lahir: string;
-  tanggal_lahir: string;
+  tanggal_lahir: string; // Disimpan sebagai string "YYYY-MM-DD" di database untuk konsistensi input form
   alamat: string;
   rt: string;
   rw: string;
@@ -34,8 +35,8 @@ export interface WargaData {
   kewarganegaraan: string;
   no_hp: string;
   status_aktif: string;
-  created_at: string;
-  updated_at: string;
+  created_at: Date; // Prisma DateTime -> Date object
+  updated_at: Date; // Prisma DateTime -> Date object
 }
 
 // Definisikan izin untuk setiap role
@@ -56,7 +57,7 @@ export async function getSession(request: NextRequest): Promise<SessionUser | nu
   if (!sessionCookie) {
     return null;
   }
-  
+
   try {
     const sessionData = await decrypt(sessionCookie);
     if (!sessionData) {
@@ -68,7 +69,7 @@ export async function getSession(request: NextRequest): Promise<SessionUser | nu
     const now = new Date();
     const diffInDays = (now.getTime() - loginTime.getTime()) / (1000 * 60 * 60 * 24);
     if (diffInDays > 7) {
-      return null; 
+      return null;
     }
 
     return sessionData as SessionUser;
@@ -113,12 +114,18 @@ export function filterWargaData(user: SessionUser, wargaData: WargaData[]): Part
   }
   // Role 'admin' bisa melihat semua, jadi tidak perlu difilter.
 
-  // Sanitasi data: sembunyikan NIK/KK dan nomor HP jika tidak diizinkan
+  // Sanitasi data: sembunyikan NIK/KK dan nomor HP secara default untuk SEMUA role
+  // Kecuali jika ada flag khusus 'reveal' yang diizinkan (implementasi nanti)
+  // Untuk saat ini, kita masking STRICTLY.
   return filteredData.map((warga) => ({
     ...warga,
-    nik_encrypted: "***HIDDEN***",
+    nik: "***HIDDEN***", // Override field asli jika perlu, atau gunakan field _encrypted
+    kk: "***HIDDEN***",
+    nik_encrypted: "***HIDDEN***", // Maintain compatibility if used
     kk_encrypted: "***HIDDEN***",
     no_hp: canViewHP ? warga.no_hp : "***HIDDEN***",
+    // Developer note: Even admin should not see plain NIK/KK in list view to prevent data leaks.
+    // Detail view might fetch single record with specific permission check.
   }));
 }
 

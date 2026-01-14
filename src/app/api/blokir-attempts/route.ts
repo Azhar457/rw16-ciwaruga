@@ -1,35 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readGoogleSheet, writeGoogleSheet } from "@/lib/googleSheets";
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-
-interface BlokirData {
-  id: number;
-  ip_address: string;
-  nik_attempted: string;
-  kk_attempted: string;
-  failed_count: number;
-  blocked_until: string;
-  total_blocks: number;
-  first_attempt: string;
-  last_attempt: string;
-  status: string;
-}
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !["admin", "super_admin"].includes(session.role)) {
+    if (!session || !["admin", "super_admin", "developer"].includes(session.role)) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
       );
     }
 
-    const blokirData = (await readGoogleSheet(
-      "blokir_attempts"
-    )) as unknown as BlokirData[];
+    const blokirData = await prisma.blokirAttempt.findMany({
+      orderBy: { last_attempt: 'desc' }
+    });
 
     return NextResponse.json(blokirData);
   } catch (error) {
@@ -45,40 +33,41 @@ export async function POST(request: NextRequest) {
   try {
     const { ip_address, nik_attempted, kk_attempted } = await request.json();
 
-    const blokirData = (await readGoogleSheet(
-      "blokir_attempts"
-    )) as unknown as BlokirData[];
-    const existingRecord = blokirData.find((b) => b.ip_address === ip_address);
+    const existingRecord = await prisma.blokirAttempt.findUnique({
+      where: { ip_address: ip_address }
+    });
 
     if (existingRecord) {
       // Update existing record
-      existingRecord.failed_count += 1;
-      existingRecord.last_attempt = new Date().toISOString();
+      const isBlockTrigger = existingRecord.failed_count + 1 >= 5;
 
-      if (existingRecord.failed_count >= 5) {
-        existingRecord.status = "blocked";
-        existingRecord.blocked_until = new Date(
-          Date.now() + 24 * 60 * 60 * 1000
-        ).toISOString();
-        existingRecord.total_blocks += 1;
-      }
+      await prisma.blokirAttempt.update({
+        where: { ip_address: ip_address },
+        data: {
+          failed_count: { increment: 1 },
+          last_attempt: new Date(),
+          status: isBlockTrigger ? "blocked" : existingRecord.status,
+          blocked_until: isBlockTrigger ? new Date(Date.now() + 24 * 60 * 60 * 1000) : existingRecord.blocked_until,
+          total_blocks: isBlockTrigger ? { increment: 1 } : existingRecord.total_blocks,
+          nik_attempted: nik_attempted || existingRecord.nik_attempted,
+          kk_attempted: kk_attempted || existingRecord.kk_attempted,
+        }
+      });
     } else {
       // Create new record
-      const maxId = Math.max(...blokirData.map((b) => b.id || 0), 0); // Added || 0 for safety
-      const newRecord = {
-        id: maxId + 1,
-        ip_address,
-        nik_attempted,
-        kk_attempted,
-        failed_count: 1,
-        blocked_until: "",
-        total_blocks: 0,
-        first_attempt: new Date().toISOString(),
-        last_attempt: new Date().toISOString(),
-        status: "monitoring",
-      };
-
-      await writeGoogleSheet("blokir_attempts", { action: 'append', data: newRecord });
+      await prisma.blokirAttempt.create({
+        data: {
+          ip_address,
+          nik_attempted,
+          kk_attempted,
+          failed_count: 1,
+          blocked_until: null,
+          total_blocks: 0,
+          first_attempt: new Date(),
+          last_attempt: new Date(),
+          status: "monitoring",
+        }
+      });
     }
 
     return NextResponse.json({
