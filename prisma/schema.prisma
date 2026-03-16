@@ -21,6 +21,8 @@ model User {
   subscription_end    String?
   created_at          DateTime  @default(now())
   verified_by         String?
+  otp_code            String?
+  otp_expiry          DateTime?
 
   @@map("users")
 }
